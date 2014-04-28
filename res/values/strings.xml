@@ -2,7 +2,10 @@
 <resources>
 
     <string name="app_name">NorCal Caltrain Timetable</string>
-    <string name="hello_world">Hello world!</string>
-    <string name="action_settings">Settings</string>
+    <string name="action_reverse">Reverse</string>
+    <string name="station_from_label">From</string>
+    <string name="station_to_label">To</string>
+    <string name="radio_button_weekday_label">Weekday schedule</string>
+    <string name="radio_button_weekend_label">Weekend schedule</string>
 
 </resources>

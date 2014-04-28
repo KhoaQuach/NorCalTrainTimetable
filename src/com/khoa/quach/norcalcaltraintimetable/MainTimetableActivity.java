@@ -1,7 +1,6 @@
 package com.khoa.quach.norcalcaltraintimetable;
 
 import android.app.Activity;
-import android.app.ActionBar;
 import android.app.Fragment;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -9,7 +8,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.os.Build;
 
 public class MainTimetableActivity extends Activity {
 
@@ -38,7 +36,7 @@ public class MainTimetableActivity extends Activity {
 		// automatically handle clicks on the Home/Up button, so long
 		// as you specify a parent activity in AndroidManifest.xml.
 		int id = item.getItemId();
-		if (id == R.id.action_settings) {
+		if (id == R.id.action_reverse) {
 			return true;
 		}
 		return super.onOptionsItemSelected(item);

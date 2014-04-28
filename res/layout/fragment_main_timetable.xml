@@ -1,16 +1,74 @@
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:paddingBottom="@dimen/activity_vertical_margin"
-    android:paddingLeft="@dimen/activity_horizontal_margin"
-    android:paddingRight="@dimen/activity_horizontal_margin"
-    android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context="com.khoa.quach.norcalcaltraintimetable.MainTimetableActivity$PlaceholderFragment" >
-
-    <TextView
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:paddingLeft="16dp"
+    android:paddingRight="16dp"
+    android:orientation="vertical" >
+            
+    <RadioGroup
+        android:id="@+id/schedule_selection"
         android:layout_width="wrap_content"
+        android:layout_height="wrap_content" 
+        android:orientation="horizontal" >
+        
+    	<RadioButton
+  		    android:id="@+id/weekday"
+  		    android:layout_width="wrap_content"
+  		    android:layout_height="wrap_content"
+  		    android:layout_weight="1.0"
+  		    android:text="@string/radio_button_weekday_label" />
+    
+    	<RadioButton
+  		    android:id="@+id/weekend"
+  		    android:layout_width="wrap_content"
+  		    android:layout_height="wrap_content"
+  		    android:layout_weight="1.0"
+  		    android:text="@string/radio_button_weekend_label" />
+    
+    </RadioGroup>
+    
+	<LinearLayout
+    	android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/hello_world" />
+        android:orientation="horizontal" 
+        android:weightSum="2">
+            
+  		<EditText
+      		android:id="@+id/station_from_label"
+      		android:layout_width="fill_parent"
+      		android:layout_height="wrap_content"
+      		android:hint="@string/station_from_label"
+      		android:layout_weight="1.0"
+      		android:inputType="none"/>
 
-</RelativeLayout>
+		<EditText
+      		android:id="@+id/station_to_label"
+      		android:layout_width="fill_parent"
+      		android:layout_height="wrap_content"
+      		android:hint="@string/station_to_label"
+      		android:layout_weight="1.0"
+      		android:inputType="none"/>
+            
+  	</LinearLayout>
+            
+    <LinearLayout 
+        android:layout_width="fill_parent"
+    	android:layout_height="fill_parent"
+    	android:orientation="horizontal" 
+    	android:weightSum="2">
+        
+		<Spinner
+			android:id="@+id/source_station"
+	   		android:layout_width="0dp"
+	   		android:layout_height="wrap_content"
+	   		android:layout_weight="1.0"/>
+	    
+		<Spinner
+	   		android:id="@+id/destination_station"
+	   		android:layout_width="0dp"
+	   		android:layout_height="wrap_content"
+	   		android:layout_weight="1.0"/>
+	
+  	</LinearLayout>
+    
+</LinearLayout>
