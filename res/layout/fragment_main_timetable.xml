@@ -1,9 +1,9 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
+    android:orientation="vertical"
     android:paddingLeft="16dp"
-    android:paddingRight="16dp"
-    android:orientation="vertical" >
+    android:paddingRight="16dp" >
             
     <RadioGroup
         android:id="@+id/schedule_selection"
@@ -27,6 +27,7 @@
     
     </RadioGroup>
     
+    <!--
 	<LinearLayout
     	android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -50,12 +51,13 @@
       		android:inputType="none"/>
             
   	</LinearLayout>
+    -->
             
-    <LinearLayout 
+    <LinearLayout
         android:layout_width="fill_parent"
-    	android:layout_height="fill_parent"
-    	android:orientation="horizontal" 
-    	android:weightSum="2">
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="2" >
         
 		<Spinner
 			android:id="@+id/source_station"
@@ -70,5 +72,11 @@
 	   		android:layout_weight="1.0"/>
 	
   	</LinearLayout>
+
+    <ListView
+        android:id="@+id/listView1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" >
+    </ListView>
     
 </LinearLayout>
