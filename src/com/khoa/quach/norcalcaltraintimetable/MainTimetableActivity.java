@@ -1,6 +1,9 @@
 package com.khoa.quach.norcalcaltraintimetable;
 
+import java.util.ArrayList;
+
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Fragment;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -9,35 +12,26 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.ListView;
 import android.widget.Spinner;
 
 public class MainTimetableActivity extends Activity {
 	
 	CalTrainDatabaseHelper m_caltrainDb;
-	
+    ListView routeDetailList;
+    RouteDetailInfoAdapter arrayAdapter;
+    ArrayList<RouteDetail> routes;
+    
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main_ui_timetable);
 		
-		m_caltrainDb = new CalTrainDatabaseHelper(this);
-		m_caltrainDb.populateDataToStopsTable();
+		Thread.setDefaultUncaughtExceptionHandler(new MyExceptionHandler());
 		
-		try
-		{	
-			Spinner source_spinner = (Spinner) findViewById(R.id.source_station);
-			ArrayAdapter<String> source_adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, m_caltrainDb.getAllStopNames());
-			source_adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-			source_spinner.setAdapter(source_adapter);
-			
-			Spinner destination_spinner = (Spinner) findViewById(R.id.destination_station);
-			ArrayAdapter<String> destination_adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, m_caltrainDb.getAllStopNames());
-			destination_adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-			destination_spinner.setAdapter(destination_adapter);
-			
-		} catch(Exception e) {
-			System.out.println(e);
-		}
+		m_caltrainDb = new CalTrainDatabaseHelper(this);
+		
+		populateDataToDisplay();
 	}
 
 	@Override
@@ -64,40 +58,85 @@ public class MainTimetableActivity extends Activity {
 		return m_caltrainDb;
 	}
 	
-	/**
-	 * A placeholder fragment containing a simple view.
+	/*
+	 * Getting data from database and populate them into UI
 	 */
-	public static class PlaceholderFragment extends Fragment {
+	private void populateDataToDisplay() {
 		
-		public PlaceholderFragment() {
-		}
+		populateDataToRouteSelection();
+		
+		populateDataToRouteDetailList();
+	}
 
-		@Override
-		public View onCreateView(LayoutInflater inflater, ViewGroup container,
-				Bundle savedInstanceState) {
-			View fragmentView = inflater.inflate(R.layout.main_ui_timetable,
-					container, false);
-			/*
+	/*
+	 * Build the list of detail route info and bind them to the list view
+	 */
+	private void populateDataToRouteDetailList() {
+	
+		routeDetailList= (ListView)findViewById(R.id.route_info_list);
+         
+        routes = new ArrayList<RouteDetail>();
+        
+        arrayAdapter = new RouteDetailInfoAdapter(this, R.layout.route_info, routes);
+         
+        routeDetailList.setAdapter(arrayAdapter);
+                
+        try
+        {
+           RouteDetail route1 = new RouteDetail("1", "20:34", "21:54", "20mins", "Express"); 
+           RouteDetail route2 = new RouteDetail("2", "9:34", "10:54", "30mins", ""); 
+           RouteDetail route3 = new RouteDetail("3", "2:34", "3:54", "20mins", "Express"); 
+           RouteDetail route4 = new RouteDetail("4", "1:34", "2:54", "10mins", ""); 
+           
+           routes.add(route1);
+           routes.add(route2);
+           routes.add(route3);
+           routes.add(route4);
+           
+           arrayAdapter.notifyDataSetChanged();
+        }
+        catch(Exception e)
+        {
+        	AlertDialog.Builder messageBox = new AlertDialog.Builder(this);
+	        messageBox.setTitle("Unexpect error...sorry...");
+	        messageBox.setMessage(e.getMessage());
+	        messageBox.setCancelable(false);
+	        messageBox.setNeutralButton("OK", null);
+	        messageBox.show();
+	        
+			e.printStackTrace();
+        }
+        
+	}
+	
+	/*
+	 * Get the list of station names and bind it to controllers
+	 */
+	private void populateDataToRouteSelection() {
+	
+		try {
+		
+			m_caltrainDb.populateDataToStopsTable();
+	
+			Spinner source_spinner = (Spinner) findViewById(R.id.source_station);
+			ArrayAdapter<String> source_adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, m_caltrainDb.getAllStopNames());
+			source_adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+			source_spinner.setAdapter(source_adapter);
 			
-			try
-			{
-				
-				Spinner source_spinner = (Spinner) fragmentView.findViewById(R.id.source_station);
-				ArrayAdapter<String> source_adapter = new ArrayAdapter<String>(this.getActivity(), android.R.layout.simple_spinner_item, m_caltrainDb.getAllStopNames());
-				source_adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-				source_spinner.setAdapter(source_adapter);
-				
-				Spinner destination_spinner = (Spinner) fragmentView.findViewById(R.id.destination_station);
-				ArrayAdapter<String> destination_adapter = new ArrayAdapter<String>(this.getActivity(), android.R.layout.simple_spinner_item, m_caltrainDb.getAllStopNames());
-				destination_adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-				destination_spinner.setAdapter(destination_adapter);
-				
-			} catch(Exception e) {
-				System.out.println(e);
-			}
-			*/
+			Spinner destination_spinner = (Spinner) findViewById(R.id.destination_station);
+			ArrayAdapter<String> destination_adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, m_caltrainDb.getAllStopNames());
+			destination_adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+			destination_spinner.setAdapter(destination_adapter);
 			
-			return fragmentView;
+		} catch(Exception e) {
+			AlertDialog.Builder messageBox = new AlertDialog.Builder(this);
+	        messageBox.setTitle("Unexpect error...sorry...");
+	        messageBox.setMessage(e.getMessage());
+	        messageBox.setCancelable(false);
+	        messageBox.setNeutralButton("OK", null);
+	        messageBox.show();
+	        
+			e.printStackTrace();
 		}
 	}
 	
