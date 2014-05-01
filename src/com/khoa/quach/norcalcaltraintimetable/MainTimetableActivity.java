@@ -8,9 +8,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
 
 public class MainTimetableActivity extends Activity {
-
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -19,7 +21,11 @@ public class MainTimetableActivity extends Activity {
 		if (savedInstanceState == null) {
 			getFragmentManager().beginTransaction()
 					.add(R.id.container, new PlaceholderFragment()).commit();
-		}
+		}	
+		
+		CalTrainDatabaseHelper caltrainDb = new CalTrainDatabaseHelper(this);
+		
+		buildSpinnerData(caltrainDb);
 	}
 
 	@Override
@@ -59,4 +65,21 @@ public class MainTimetableActivity extends Activity {
 		}
 	}
 
+	/**
+	 * Populate stop names to spinner controls
+	 */
+	public void buildSpinnerData(CalTrainDatabaseHelper caltrainDb) {
+		
+		Spinner source_spinner = (Spinner) findViewById(R.id.source_station);
+		ArrayAdapter<String> source_adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, caltrainDb.getAllStopNames());
+		source_adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+		source_spinner.setAdapter(source_adapter);
+		
+		Spinner destination_spinner = (Spinner) findViewById(R.id.destination_station);
+		ArrayAdapter<String> destination_adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, caltrainDb.getAllStopNames());
+		destination_adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+		destination_spinner.setAdapter(destination_adapter);
+	    
+	}
+	
 }
