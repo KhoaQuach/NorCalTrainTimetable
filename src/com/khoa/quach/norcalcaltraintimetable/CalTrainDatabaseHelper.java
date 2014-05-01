@@ -22,7 +22,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 	private static Context myContext;
 	
 	// Initial version
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2;
  
     // Database Name
     private static final String DATABASE_NAME = "Caltrain_GTFS";
@@ -54,22 +54,20 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	
     	// Create stops table
         String CREATE_STOPS_TABLE = "CREATE TABLE " + TABLE_STOPS + "("
-                + STOPS_ID + " VARCHAR(255) NOT NULL PRIMARY KEY," 
+                + STOPS_ID + " VARCHAR(32) NOT NULL PRIMARY KEY," 
         		+ STOPS_CODE + " VARCHAR(32),"
-                + STOPS_NAME + " VARCHAR(128) NOT NULL,"
-                + STOPS_DESC + " VARCHAR(128),"
-                + STOPS_LAT + " DECIMAL(12,8) NOT NULL,"
-                + STOPS_LON + " DECIMAL(12,8) NOT NULL,"
-                + STOPS_ZONE_ID + " VARCHAR(255),"
+                + STOPS_NAME + " VARCHAR(255) NOT NULL,"
+                + STOPS_DESC + " VARCHAR(255),"
+                + STOPS_LAT + " NUMERIC NOT NULL,"
+                + STOPS_LON + " NUMERIC NOT NULL,"
+                + STOPS_ZONE_ID + " VARCHAR(32),"
                 + STOPS_URL + " VARCHAR(255),"
                 + STOPS_LOC_TYPE + " INT,"
-                + STOPS_PARENT_STATION + " VARCHAR(255),"
-                + STOPS_PLATFORM_CODE + " VARCHAR(10)"
+                + STOPS_PARENT_STATION + " VARCHAR(32),"
+                + STOPS_PLATFORM_CODE + " VARCHAR(32)"
         		+ ")";
         
         db.execSQL(CREATE_STOPS_TABLE);
-        
-        populateStopsTable();
     }
  
     // Upgrading database
@@ -161,10 +159,10 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
         
     	List<String> stopNameList = new ArrayList<String>();
         
-        String selectQuery = "SELECT  * FROM " 
+        String selectQuery = "SELECT " + STOPS_NAME + " FROM " 
         					+ TABLE_STOPS 
-        					+ " WHERE stop_code > 0 "
-        					+ "	AND zone_id > 0 "
+        					+ " WHERE stop_code <> '' "
+        					+ "	AND zone_id <> '' "
         					+ " AND platform_code = 'NB' "
         					+ " ORDER BY stop_lat DESC";
  
@@ -172,11 +170,11 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
         Cursor cursor = db.rawQuery(selectQuery, null);
  
         // looping through all rows and adding to list
-        if (cursor.moveToFirst()) {
+        if ( cursor.moveToFirst() ) {
             do { 
                 // Adding contact to list
                 stopNameList.add(cursor.getString(0));
-            } while (cursor.moveToNext());
+            } while ( cursor.moveToNext() );
         }
  
         return stopNameList;
@@ -216,18 +214,25 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
         return stopList;
     }
     
-    // Getting stops Count
+    /**
+     * 
+     * @return number of stops in stops table
+     */
     public int getStopsCount() {
         String countQuery = "SELECT  * FROM " + TABLE_STOPS;
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = db.rawQuery(countQuery, null);
+        
+        int count = cursor.getCount();
         cursor.close();
  
         // return count
-        return cursor.getCount();
+        return count;
     }
  
-    public void populateStopsTable() {
+    public void populateDataToStopsTable() {
+    	
+    	if ( 0 < getStopsCount() ) return;
     	
     	String line = "";
     	String id, code, name, desc, zone_id, url, location_type, parent_station, platform_code = "";
