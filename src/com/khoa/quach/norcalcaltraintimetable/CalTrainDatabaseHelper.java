@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import android.app.AlertDialog;
@@ -21,6 +22,8 @@ import android.database.sqlite.SQLiteOpenHelper;
 public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 
 	private static Context myContext;
+	List<String> m_stopNameList = new ArrayList<String>();
+	List<String> m_stopStationCodeList = new ArrayList<String>();
 	
 	// Initial version
     private static final int DATABASE_VERSION = 2;
@@ -28,10 +31,17 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     // Database Name
     private static final String DATABASE_NAME = "Caltrain_GTFS";
  
+    //
     // All the table names
+    //
     private static final String TABLE_STOPS = "stops";
- 
-    // Stops Table Columns names
+    private static final String TABLE_TRIPS = "trips";
+    private static final String TABLE_STOP_TIME = "stop_time";
+    private static final String TABLE_ROUTES = "routes";
+    
+    //
+    // stops Table Columns names
+    //
     private static final String STOPS_ID 				= "stop_id";
     private static final String STOPS_CODE 				= "stop_code";
     private static final String STOPS_NAME 				= "stop_name";
@@ -43,6 +53,27 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     private static final String STOPS_LOC_TYPE 			= "location_type";
     private static final String STOPS_PARENT_STATION 	= "parent_station";
     private static final String STOPS_PLATFORM_CODE 	= "platform_code";
+    
+    //
+    // trips Table Columns names
+    //
+    // route_id,service_id,trip_id,trip_headsign,trip_short_name,direction_id,block_id,shape_id
+    //
+    private static final String TRIPS_ 				= "";
+    
+    //
+    // stop_time Table Columns names
+    //
+    // trip_id,arrival_time,departure_time,stop_id,stop_sequence,pickup_type,drop_off_type
+    //
+    private static final String STOP_TIME 				= "";
+    
+    //
+    // routes Table Columns names
+    //
+    // route_id,route_short_name,route_long_name,route_desc,route_type,route_url,route_color
+    //
+    private static final String ROUTES_ 				= "";
     
     public CalTrainDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -201,31 +232,47 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
      */
     public List<String> getAllStopNames() throws Exception {
         
-    	List<String> stopNameList = new ArrayList<String>();
-        
-        String selectQuery = "SELECT " + STOPS_NAME + " FROM " 
-        					+ TABLE_STOPS 
-        					+ " WHERE stop_code <> '' "
-        					+ "	AND zone_id <> '' "
-        					+ " AND platform_code = 'NB' "
-        					+ " ORDER BY stop_lat DESC";
- 
-        try {
-	        SQLiteDatabase db = this.getReadableDatabase();
-	        Cursor cursor = db.rawQuery(selectQuery, null);
+    	if ( m_stopNameList.isEmpty() || m_stopStationCodeList.isEmpty() ) {
+    		
+    		m_stopNameList.clear();
+    		m_stopStationCodeList.clear();
+    		
+	        String selectQuery = "SELECT " + STOPS_NAME + ", " + STOPS_CODE+ " FROM " 
+	        					+ TABLE_STOPS 
+	        					+ " WHERE stop_code <> '' "
+	        					+ "	AND zone_id <> '' "
+	        					+ " AND platform_code = 'NB' "
+	        					+ " ORDER BY stop_lat DESC";
 	 
-	        // looping through all rows and adding to list
-	        if ( cursor.moveToFirst() ) {
-	            do { 
-	                // Adding contact to list
-	                stopNameList.add(cursor.getString(0));
-	            } while ( cursor.moveToNext() );
+	        try {
+		        SQLiteDatabase db = this.getReadableDatabase();
+		        Cursor cursor = db.rawQuery(selectQuery, null);
+		
+		        String stop_name = "", stop_code = "";
+		        
+		        if ( cursor.moveToFirst() ) {
+		            do { 
+		            	stop_name = cursor.getString(0);
+		            	stop_code = cursor.getString(1);
+		            	
+		            	if ( (!stop_name.isEmpty()) && (!stop_code.isEmpty()) ) {
+		            		m_stopNameList.add(stop_name);
+		            		
+		            		// Keep the code in the same index as the name so we could
+		            		// do the look up later using the name
+		            		m_stopStationCodeList.add(stop_code);
+		            	}
+		            } while ( cursor.moveToNext() );
+		        }
+		 
+		        return m_stopNameList;
+	        } catch(Exception e) {
+	        	throw e;
 	        }
-	 
-	        return stopNameList;
-        } catch(Exception e) {
-        	throw e;
-        }
+	        
+    	} else {
+    		return m_stopNameList;
+    	}
     }
     
     /*
