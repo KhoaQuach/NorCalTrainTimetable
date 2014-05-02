@@ -7,6 +7,9 @@
     <string name="station_to_label">To</string>
     <string name="radio_button_weekday_label">Weekday schedule</string>
     <string name="radio_button_weekend_label">Weekend schedule</string>
+    <string name="routes_csv">gtfs/routes.txt</string>
     <string name="stops_csv">gtfs/stops.txt</string>
+    <string name="stop_times_csv">gtfs/stop_times.txt</string>
+    <string name="trips_csv">gtfs/trips.txt</string>
 
 </resources>

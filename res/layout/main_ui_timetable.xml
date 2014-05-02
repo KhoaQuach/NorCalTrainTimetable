@@ -12,18 +12,21 @@
         android:orientation="horizontal" >
         
     	<RadioButton
-  		    android:id="@+id/weekday"
+  		    android:id="@+id/button_weekday"
   		    android:layout_width="wrap_content"
   		    android:layout_height="wrap_content"
   		    android:layout_weight="1.0"
-  		    android:text="@string/radio_button_weekday_label" />
+  		    android:text="@string/radio_button_weekday_label"
+  		    android:checked="true" 
+  		    android:onClick="onRadioScheduleButtonClicked"/>
     
     	<RadioButton
-  		    android:id="@+id/weekend"
+  		    android:id="@+id/button_weekend"
   		    android:layout_width="wrap_content"
   		    android:layout_height="wrap_content"
   		    android:layout_weight="1.0"
-  		    android:text="@string/radio_button_weekend_label" />
+  		    android:text="@string/radio_button_weekend_label"
+  		    android:onClick="onRadioScheduleButtonClicked"/>
     
     </RadioGroup>
             

@@ -26,7 +26,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 	List<String> m_stopStationCodeList = new ArrayList<String>();
 	
 	// Initial version
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 1;
  
     // Database Name
     private static final String DATABASE_NAME = "Caltrain_GTFS";
@@ -36,7 +36,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     //
     private static final String TABLE_STOPS = "stops";
     private static final String TABLE_TRIPS = "trips";
-    private static final String TABLE_STOP_TIME = "stop_time";
+    private static final String TABLE_STOP_TIMES = "stop_times";
     private static final String TABLE_ROUTES = "routes";
     
     //
@@ -59,21 +59,40 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     //
     // route_id,service_id,trip_id,trip_headsign,trip_short_name,direction_id,block_id,shape_id
     //
-    private static final String TRIPS_ 				= "";
+    private static final String TRIPS_ROUTE_ID		= "route_id";
+    private static final String TRIPS_SERVICE_ID 	= "service_id";
+    private static final String TRIPS_ID 			= "trip_id";
+    private static final String TRIPS_HEAD_SIGN 	= "trip_headsign";
+    private static final String TRIPS_SHORT_NAME 	= "trip_short_name";
+    private static final String TRIPS_DIRECTION_ID 	= "direction_id";
+    private static final String TRIPS_BLOCK_ID 		= "block_id";
+    private static final String TRIPS_SHAPE_ID 		= "shape_id";
     
     //
     // stop_time Table Columns names
     //
-    // trip_id,arrival_time,departure_time,stop_id,stop_sequence,pickup_type,drop_off_type
+    // trip_id,arrival_time,departure_time,stop_id,stop_sequence,pickup_type,dropoff_type
     //
-    private static final String STOP_TIME 				= "";
+    private static final String STOP_TIMES_TRIP_ID 			= "trip_id";
+    private static final String STOP_TIMES_ARRIVAL_TIME 	= "arrival";
+    private static final String STOP_TIMES_DEPARTURE_TIME 	= "departure_time";
+    private static final String STOP_TIMES_STOP_ID 			= "stop_id";
+    private static final String STOP_TIMES_STOP_SEQUENCE 	= "stop_sequence";
+    private static final String STOP_TIMES_PICKUP_TYPE 		= "pickup_type";
+    private static final String STOP_TIMES_DROPOFF_TYPE 	= "dropoff_type";
     
     //
     // routes Table Columns names
     //
     // route_id,route_short_name,route_long_name,route_desc,route_type,route_url,route_color
     //
-    private static final String ROUTES_ 				= "";
+    private static final String ROUTES_ID 			= "route_id";
+    private static final String ROUTES_SHORT_NAME 	= "route_short_name";
+    private static final String ROUTES_LONG_NAME 	= "route_long_name";
+    private static final String ROUTES_DESC 		= "route_desc";
+    private static final String ROUTES_TYPE 		= "route_type";
+    private static final String ROUTES_URL 			= "route_url";
+    private static final String ROUTES_COLOR 		= "route_color";
     
     public CalTrainDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -85,8 +104,9 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     public void onCreate(SQLiteDatabase db) {
     	
     	try {
-	    	// Create stops table
-	        String CREATE_STOPS_TABLE = "CREATE TABLE " + TABLE_STOPS + "("
+    			
+    		// Create stops table
+    		String CREATE_STOPS_TABLE = "CREATE TABLE " + TABLE_STOPS + "("
 	                + STOPS_ID + " VARCHAR(32) NOT NULL PRIMARY KEY," 
 	        		+ STOPS_CODE + " VARCHAR(32),"
 	                + STOPS_NAME + " VARCHAR(255) NOT NULL,"
@@ -98,9 +118,61 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 	                + STOPS_LOC_TYPE + " INT,"
 	                + STOPS_PARENT_STATION + " VARCHAR(32),"
 	                + STOPS_PLATFORM_CODE + " VARCHAR(32)"
+	        		+ ");"
+    				+ "CREATE INDEX zone_id_idx ON " + TABLE_STOPS + "(" + STOPS_ZONE_ID + ");"
+    				+ "CREATE INDEX lat_idx ON " + TABLE_STOPS + "(" + STOPS_LAT + ");"
+    				+ "CREATE INDEX lon_idx ON " + TABLE_STOPS + "(" + STOPS_LON + ")";
+    			
+    		db.execSQL(CREATE_STOPS_TABLE);
+    				
+    		// Create table
+    		String CREATE_STRIPS_TABLE = "CREATE TABLE " + TABLE_TRIPS + "("
+	                + TRIPS_ID + " VARCHAR(32) NOT NULL PRIMARY KEY," 
+	        		+ TRIPS_ROUTE_ID + " VARCHAR(32) NOT NULL,"
+	                + TRIPS_SERVICE_ID + " VARCHAR(32) NOT NULL,"
+	                + TRIPS_HEAD_SIGN + " VARCHAR(255),"
+	                + TRIPS_SHORT_NAME + " VARCHAR(255),"
+	                + TRIPS_DIRECTION_ID + " VARCHAR(255),"
+	                + TRIPS_BLOCK_ID + " VARCHAR(32),"
+	                + TRIPS_SHAPE_ID + " VARCHAR(255)"
+	        		+ ");"
+	        		+ "CREATE INDEX route_id_idx ON " + TABLE_TRIPS + "(" + TRIPS_ROUTE_ID + ");"
+    				+ "CREATE INDEX service_id_idx ON " + TABLE_TRIPS + "(" + TRIPS_SERVICE_ID + ");"
+    				+ "CREATE INDEX direction_id_idx ON " + TABLE_TRIPS + "(" + TRIPS_DIRECTION_ID + ");"
+    				+ "CREATE INDEX shape_idx ON " + TABLE_TRIPS + "(" + TRIPS_SHAPE_ID + ")";
+	        
+    		db.execSQL(CREATE_STRIPS_TABLE);
+    				
+    		// Create table
+    		String CREATE_STOP_TIME_TABLE = "CREATE TABLE " + TABLE_STOP_TIMES + "("
+	                + STOP_TIMES_TRIP_ID + " VARCHAR(32) NOT NULL," 
+	        		+ STOP_TIMES_ARRIVAL_TIME + " TEXT,"
+	                + STOP_TIMES_DEPARTURE_TIME + " TEXT,"
+	                + STOP_TIMES_STOP_ID + " VARCHAR(32) NOT NULL,"
+	                + STOP_TIMES_STOP_SEQUENCE + " SMALLINT NOT NULL,"
+	                + STOP_TIMES_PICKUP_TYPE + " SMALLINT,"
+	                + STOP_TIMES_DROPOFF_TYPE + " SMALLINT"
+	        		+ ");"
+	        		+ "CREATE INDEX trip_id_idx ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_TRIP_ID + ");"
+    				+ "CREATE INDEX stop_id_idx ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_STOP_ID + ");"
+    				+ "CREATE INDEX pickup_type ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_PICKUP_TYPE + ");"
+    				+ "CREATE INDEX dropoff_type_idx ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_DROPOFF_TYPE + ")";
+	        
+    		db.execSQL(CREATE_STOP_TIME_TABLE);
+    				
+    		// Create table
+    		String CREATE_ROUTES_TABLE = "CREATE TABLE " + TABLE_ROUTES + "("
+	                + ROUTES_ID + " VARCHAR(32) NOT NULL PRIMARY KEY," 
+	        		+ ROUTES_SHORT_NAME + " VARCHAR(255),"
+	                + ROUTES_LONG_NAME + " VARCHAR(255),"
+	                + ROUTES_DESC + " VARCHAR(255),"
+	                + ROUTES_TYPE + " smallint,"
+	                + ROUTES_URL + " VARCHAR(255),"
+	                + ROUTES_COLOR + " VARCHAR(32)"
 	        		+ ")";
 	        
-	        db.execSQL(CREATE_STOPS_TABLE);
+    		db.execSQL(CREATE_ROUTES_TABLE);
+    		
     	} catch(Exception e) {
     		exceptionMessage("Setup database error", e);
     	}
@@ -112,8 +184,13 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
     	
     	try {
+    		
     		// Drop older table if existed
     		db.execSQL("DROP TABLE IF EXISTS " + TABLE_STOPS);
+    		db.execSQL("DROP TABLE IF EXISTS " + TABLE_STOP_TIMES);
+    		db.execSQL("DROP TABLE IF EXISTS " + TABLE_ROUTES);
+    		db.execSQL("DROP TABLE IF EXISTS " + TABLE_TRIPS);
+    		
     	} catch(Exception e)
     	{
     		exceptionMessage("Failed to drop old database", e);
@@ -315,13 +392,12 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
         }
     }
     
-    /**
-     * 
-     * @return number of stops in stops table
+    /*
+     * Get the number of rows in input table 
      */
-    public int getStopsCount() throws Exception {
+    public int getTableCount(String tableName) throws Exception {
     	
-    	String countQuery = "SELECT  * FROM " + TABLE_STOPS;
+    	String countQuery = "SELECT  * FROM " + tableName;
     	try {
         
 	        SQLiteDatabase db = this.getReadableDatabase();
@@ -338,9 +414,94 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	}
     }
  
+    /*
+     * Check if table exists
+     */
+    private boolean isTableExists(String tableName) {
+    	
+    	try {
+	    	SQLiteDatabase db = this.getReadableDatabase();
+	
+	        Cursor cursor = db.rawQuery("select DISTINCT tbl_name from sqlite_master where tbl_name = '" + tableName + "'", null);
+	        if( cursor!=null ) {
+	            if( cursor.getCount() > 0 ) {
+	            	cursor.close();
+	                return true;
+	            }
+	                        
+	            cursor.close();
+        }
+    	} catch(Exception e) {
+    		return false;
+    	}
+        return false;
+    }
+    
+    /*
+     * Populate data to routes table from csv file 
+     */
+    public void populateDataToRoutesTable() throws Exception {
+    	
+    	if ( 0 < getTableCount(TABLE_ROUTES) ) return;
+        
+    	String line = "";
+    	String id, short_name, long_name, desc, type, url, color;
+    	
+    	try {
+    		InputStream is = myContext.getAssets().open(myContext.getResources().getString(R.string.routes_csv));
+    		BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+    		
+			while ( (line = br.readLine()) != null ) {
+				
+			    String[] RowData = line.split(",");  
+			    id = RowData[0];  
+			    short_name = RowData[1];  
+			    long_name = RowData[2];
+			    desc = RowData[3];
+			    type = RowData[4];
+			    url = RowData[5];
+			    color = RowData[6];
+			    
+			    ContentValues values = new ContentValues();  
+			    values.put(ROUTES_ID, id);  
+			    values.put(ROUTES_SHORT_NAME, short_name);  
+			    values.put(ROUTES_LONG_NAME, long_name);  
+			    values.put(ROUTES_DESC, desc);  
+			    values.put(ROUTES_TYPE, type);  
+			    values.put(ROUTES_URL, url);  
+			    values.put(ROUTES_COLOR, color);  
+			    
+			    this.getWritableDatabase().insert(TABLE_ROUTES, null, values); 
+			    
+			}
+			
+			br.close();  
+			
+		} catch (NumberFormatException e) {
+			exceptionMessage("Error getting data...", e);
+			e.printStackTrace();
+		}  catch (NotFoundException e) {
+			exceptionMessage("Error getting data...", e);
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			exceptionMessage("Error getting data...", e);
+			e.printStackTrace();
+		} catch (IOException e) {
+			exceptionMessage("Error getting data...", e);
+			e.printStackTrace();
+		} catch(Exception e) {
+			throw e;
+		}
+    	
+    	
+    }
+    
+    /*
+     * Populate data to stops table from csv file 
+     */
     public void populateDataToStopsTable() throws Exception {
     	
-    	if ( 0 < getStopsCount() ) return;
+    	if ( 0 < getTableCount(TABLE_STOPS) ) return;
     	
     	String line = "";
     	String id, code, name, desc, zone_id, url, location_type, parent_station, platform_code;
@@ -379,6 +540,125 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			    values.put(STOPS_PLATFORM_CODE, platform_code);  
 			    
 			    this.getWritableDatabase().insert(TABLE_STOPS, null, values); 
+			    
+			}
+			
+			br.close();  
+			
+		} catch (NumberFormatException e) {
+			exceptionMessage("Error getting data...", e);
+			e.printStackTrace();
+		}  catch (NotFoundException e) {
+			exceptionMessage("Error getting data...", e);
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			exceptionMessage("Error getting data...", e);
+			e.printStackTrace();
+		} catch (IOException e) {
+			exceptionMessage("Error getting data...", e);
+			e.printStackTrace();
+		} catch(Exception e) {
+			throw e;
+		}
+    	
+    	
+    }
+    
+    /*
+     * Populate data to stop times table from csv file 
+     */
+    public void populateDataToStopTimesTable() throws Exception {
+    	
+    	if ( 0 < getTableCount(TABLE_STOP_TIMES) ) return;
+        
+    	String line = "";
+    	String trip_id, arrival_time, departure_time, stop_id, stop_sequence, pickup_type, dropoff_type;
+    	
+    	try {
+    		InputStream is = myContext.getAssets().open(myContext.getResources().getString(R.string.stop_times_csv));
+    		BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+    		
+			while ( (line = br.readLine()) != null ) {
+				
+			    String[] RowData = line.split(",");  
+			    trip_id = RowData[0];  
+			    arrival_time = RowData[1];  
+			    departure_time = RowData[2];
+			    stop_id = RowData[3];
+			    stop_sequence = RowData[4];
+			    pickup_type = RowData[5];
+			    dropoff_type = RowData[6];
+			    
+			    ContentValues values = new ContentValues();  
+			    values.put(STOP_TIMES_TRIP_ID, trip_id);  
+			    values.put(STOP_TIMES_ARRIVAL_TIME, arrival_time);  
+			    values.put(STOP_TIMES_DEPARTURE_TIME, departure_time);  
+			    values.put(STOP_TIMES_STOP_ID, stop_id);  
+			    values.put(STOP_TIMES_STOP_SEQUENCE, stop_sequence);  
+			    values.put(STOP_TIMES_PICKUP_TYPE, pickup_type);  
+			    values.put(STOP_TIMES_DROPOFF_TYPE, dropoff_type);  
+			    
+			    this.getWritableDatabase().insert(TABLE_STOP_TIMES, null, values); 
+			    
+			}
+			
+			br.close();  
+			
+		} catch (NumberFormatException e) {
+			exceptionMessage("Error getting data...", e);
+			e.printStackTrace();
+		}  catch (NotFoundException e) {
+			exceptionMessage("Error getting data...", e);
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			exceptionMessage("Error getting data...", e);
+			e.printStackTrace();
+		} catch (IOException e) {
+			exceptionMessage("Error getting data...", e);
+			e.printStackTrace();
+		} catch(Exception e) {
+			throw e;
+		}
+    
+    }
+    
+    /*
+     * Populate data to trips table from csv file 
+     */
+    public void populateDataToTripsTable() throws Exception {
+    	
+    	if ( 0 < getTableCount(TABLE_TRIPS) ) return;
+    	    
+    	String line = "";
+    	String route_id, service_id, id, head_sign, short_name, direction_id, block_id, shape_id;
+    	
+    	try {
+    		InputStream is = myContext.getAssets().open(myContext.getResources().getString(R.string.stop_times_csv));
+    		BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+    		
+			while ( (line = br.readLine()) != null ) {
+				
+			    String[] RowData = line.split(",");  
+			    route_id = RowData[0];  
+			    service_id = RowData[1];  
+			    id = RowData[2];
+			    head_sign = RowData[3];
+			    short_name = RowData[4];
+			    direction_id = RowData[5];
+			    block_id = RowData[6];
+			    shape_id = RowData[7];
+			    
+			    ContentValues values = new ContentValues();  
+			    values.put(TRIPS_ROUTE_ID, route_id);  
+			    values.put(TRIPS_SERVICE_ID, service_id);  
+			    values.put(TRIPS_ID, id);  
+			    values.put(TRIPS_HEAD_SIGN, head_sign);  
+			    values.put(TRIPS_SHORT_NAME, short_name);  
+			    values.put(TRIPS_DIRECTION_ID, direction_id);  
+			    values.put(TRIPS_BLOCK_ID, block_id);
+			    values.put(TRIPS_SHAPE_ID, shape_id);
+			    
+			    this.getWritableDatabase().insert(TABLE_TRIPS, null, values); 
 			    
 			}
 			

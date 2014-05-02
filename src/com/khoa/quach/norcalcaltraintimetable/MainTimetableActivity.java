@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Fragment;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -14,6 +15,7 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Spinner;
+import android.widget.RadioButton;
 
 public class MainTimetableActivity extends Activity {
 	
@@ -21,6 +23,8 @@ public class MainTimetableActivity extends Activity {
     ListView routeDetailList;
     RouteDetailInfoAdapter arrayAdapter;
     ArrayList<RouteDetail> routes;
+    
+    private static final String PREFS_NAME = "NorCalCalTrainSchedules";
     
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -32,6 +36,8 @@ public class MainTimetableActivity extends Activity {
 		m_caltrainDb = new CalTrainDatabaseHelper(this);
 		
 		populateDataToDisplay();
+		
+		retrieveSelections();
 	}
 
 	@Override
@@ -54,6 +60,44 @@ public class MainTimetableActivity extends Activity {
 		return super.onOptionsItemSelected(item);
 	}
 
+	public void onRadioScheduleButtonClicked(View view) {
+		
+	    boolean checked = ((RadioButton) view).isChecked();
+	    
+	    switch( view.getId() ) {
+	    
+	        case R.id.button_weekday:
+	        
+	        	if (checked) {
+	        		
+	        		// Save states
+	        		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0); 
+	        		SharedPreferences.Editor editor = settings.edit();
+	        		editor.putBoolean("button_weekday", checked); 
+	        		editor.putBoolean("button_weekend", false);
+	        		editor.commit();
+	        		
+	        	}
+	               
+	            break;
+	        
+	        case R.id.button_weekend:
+	            
+	        	if (checked) {
+	        		
+	        		// Save states
+	        		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0); 
+	        		SharedPreferences.Editor editor = settings.edit();
+	        		editor.putBoolean("button_weekend", checked); 
+	        		editor.putBoolean("button_weekday", false);
+	        		editor.commit();
+	    		}
+	    
+	            break;
+	            
+	    }
+	}
+	
 	public CalTrainDatabaseHelper getDbHelper() {
 		return m_caltrainDb;
 	}
@@ -107,6 +151,18 @@ public class MainTimetableActivity extends Activity {
 			e.printStackTrace();
         }
         
+	}
+	
+	/*
+	 * Retrieve all the selections on radio buttons and spinners
+	 */
+	private void retreiveSelections() {
+		
+		// Restore preferences
+		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+	    boolean button_weekday_setting = settings.getBoolean("button_weekday", false);
+	    boolean button_weekend_setting = settings.getBoolean("button_weekend", false);
+	       
 	}
 	
 	/*
