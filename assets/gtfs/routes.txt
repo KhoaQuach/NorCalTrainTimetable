@@ -1,0 +1,4 @@
+Bu-120,,Bullet,,2,,E31837
+Li-120,,Limited,,2,,FEF0B5
+Lo-120,,Local,,2,,
+TaSj-120,,Tamien / San Jose Diridon Caltrain Shuttle,,2,,

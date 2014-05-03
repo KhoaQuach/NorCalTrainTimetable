@@ -1,13 +1,11 @@
 package com.khoa.quach.norcalcaltraintimetable;
 
 import java.io.BufferedReader;
-import java.io.Console;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import android.app.AlertDialog;
@@ -16,14 +14,12 @@ import android.content.Context;
 import android.content.res.Resources.NotFoundException;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteDatabase.CursorFactory;
 import android.database.sqlite.SQLiteOpenHelper;
  
 public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 
 	private static Context myContext;
 	List<String> m_stopNameList = new ArrayList<String>();
-	List<String> m_stopStationCodeList = new ArrayList<String>();
 	
 	// Initial version
     private static final int DATABASE_VERSION = 1;
@@ -103,79 +99,10 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
     	
-    	try {
-    			
-    		// Create stops table
-    		String CREATE_STOPS_TABLE = "CREATE TABLE " + TABLE_STOPS + "("
-	                + STOPS_ID + " VARCHAR(32) NOT NULL PRIMARY KEY," 
-	        		+ STOPS_CODE + " VARCHAR(32),"
-	                + STOPS_NAME + " VARCHAR(255) NOT NULL,"
-	                + STOPS_DESC + " VARCHAR(255),"
-	                + STOPS_LAT + " NUMERIC NOT NULL,"
-	                + STOPS_LON + " NUMERIC NOT NULL,"
-	                + STOPS_ZONE_ID + " VARCHAR(32),"
-	                + STOPS_URL + " VARCHAR(255),"
-	                + STOPS_LOC_TYPE + " INT,"
-	                + STOPS_PARENT_STATION + " VARCHAR(32),"
-	                + STOPS_PLATFORM_CODE + " VARCHAR(32)"
-	        		+ ");"
-    				+ "CREATE INDEX zone_id_idx ON " + TABLE_STOPS + "(" + STOPS_ZONE_ID + ");"
-    				+ "CREATE INDEX lat_idx ON " + TABLE_STOPS + "(" + STOPS_LAT + ");"
-    				+ "CREATE INDEX lon_idx ON " + TABLE_STOPS + "(" + STOPS_LON + ")";
-    			
-    		db.execSQL(CREATE_STOPS_TABLE);
-    				
-    		// Create table
-    		String CREATE_STRIPS_TABLE = "CREATE TABLE " + TABLE_TRIPS + "("
-	                + TRIPS_ID + " VARCHAR(32) NOT NULL PRIMARY KEY," 
-	        		+ TRIPS_ROUTE_ID + " VARCHAR(32) NOT NULL,"
-	                + TRIPS_SERVICE_ID + " VARCHAR(32) NOT NULL,"
-	                + TRIPS_HEAD_SIGN + " VARCHAR(255),"
-	                + TRIPS_SHORT_NAME + " VARCHAR(255),"
-	                + TRIPS_DIRECTION_ID + " VARCHAR(255),"
-	                + TRIPS_BLOCK_ID + " VARCHAR(32),"
-	                + TRIPS_SHAPE_ID + " VARCHAR(255)"
-	        		+ ");"
-	        		+ "CREATE INDEX route_id_idx ON " + TABLE_TRIPS + "(" + TRIPS_ROUTE_ID + ");"
-    				+ "CREATE INDEX service_id_idx ON " + TABLE_TRIPS + "(" + TRIPS_SERVICE_ID + ");"
-    				+ "CREATE INDEX direction_id_idx ON " + TABLE_TRIPS + "(" + TRIPS_DIRECTION_ID + ");"
-    				+ "CREATE INDEX shape_idx ON " + TABLE_TRIPS + "(" + TRIPS_SHAPE_ID + ")";
-	        
-    		db.execSQL(CREATE_STRIPS_TABLE);
-    				
-    		// Create table
-    		String CREATE_STOP_TIME_TABLE = "CREATE TABLE " + TABLE_STOP_TIMES + "("
-	                + STOP_TIMES_TRIP_ID + " VARCHAR(32) NOT NULL," 
-	        		+ STOP_TIMES_ARRIVAL_TIME + " TEXT,"
-	                + STOP_TIMES_DEPARTURE_TIME + " TEXT,"
-	                + STOP_TIMES_STOP_ID + " VARCHAR(32) NOT NULL,"
-	                + STOP_TIMES_STOP_SEQUENCE + " SMALLINT NOT NULL,"
-	                + STOP_TIMES_PICKUP_TYPE + " SMALLINT,"
-	                + STOP_TIMES_DROPOFF_TYPE + " SMALLINT"
-	        		+ ");"
-	        		+ "CREATE INDEX trip_id_idx ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_TRIP_ID + ");"
-    				+ "CREATE INDEX stop_id_idx ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_STOP_ID + ");"
-    				+ "CREATE INDEX pickup_type ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_PICKUP_TYPE + ");"
-    				+ "CREATE INDEX dropoff_type_idx ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_DROPOFF_TYPE + ")";
-	        
-    		db.execSQL(CREATE_STOP_TIME_TABLE);
-    				
-    		// Create table
-    		String CREATE_ROUTES_TABLE = "CREATE TABLE " + TABLE_ROUTES + "("
-	                + ROUTES_ID + " VARCHAR(32) NOT NULL PRIMARY KEY," 
-	        		+ ROUTES_SHORT_NAME + " VARCHAR(255),"
-	                + ROUTES_LONG_NAME + " VARCHAR(255),"
-	                + ROUTES_DESC + " VARCHAR(255),"
-	                + ROUTES_TYPE + " smallint,"
-	                + ROUTES_URL + " VARCHAR(255),"
-	                + ROUTES_COLOR + " VARCHAR(32)"
-	        		+ ")";
-	        
-    		db.execSQL(CREATE_ROUTES_TABLE);
-    		
-    	} catch(Exception e) {
-    		exceptionMessage("Setup database error", e);
-    	}
+    	createRoutesTable(db);
+    	createStopsTable(db);
+    	createStopTimesTable(db);
+    	createTripsTable(db);
     	
     }
  
@@ -200,6 +127,122 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
         
     }
  
+    /*
+     * Create routes table
+     */
+    private void createRoutesTable(SQLiteDatabase db) {
+    
+    	try {
+    		// Create table
+    		String CREATE_ROUTES_TABLE = "CREATE TABLE " + TABLE_ROUTES + "("
+	                + ROUTES_ID + " VARCHAR(32) NOT NULL PRIMARY KEY," 
+	        		+ ROUTES_SHORT_NAME + " VARCHAR(255),"
+	                + ROUTES_LONG_NAME + " VARCHAR(255),"
+	                + ROUTES_DESC + " VARCHAR(255),"
+	                + ROUTES_TYPE + " smallint,"
+	                + ROUTES_URL + " VARCHAR(255),"
+	                + ROUTES_COLOR + " VARCHAR(32)"
+	        		+ ")";
+	        
+    		db.execSQL(CREATE_ROUTES_TABLE);
+    	}
+    	catch(Exception e)
+    	{
+    		exceptionMessage("Failed to setup routes database table", e);
+    	}
+    }
+    
+    /*
+     * Create stop_time table
+     */
+    private void createStopTimesTable(SQLiteDatabase db) {
+    
+    	try {
+    		// Create table
+    		String CREATE_STOP_TIME_TABLE = "CREATE TABLE " + TABLE_STOP_TIMES + "("
+	                + STOP_TIMES_TRIP_ID + " VARCHAR(32) NOT NULL," 
+	        		+ STOP_TIMES_ARRIVAL_TIME + " TEXT,"
+	                + STOP_TIMES_DEPARTURE_TIME + " TEXT,"
+	                + STOP_TIMES_STOP_ID + " VARCHAR(32) NOT NULL,"
+	                + STOP_TIMES_STOP_SEQUENCE + " SMALLINT NOT NULL,"
+	                + STOP_TIMES_PICKUP_TYPE + " SMALLINT,"
+	                + STOP_TIMES_DROPOFF_TYPE + " SMALLINT"
+	        		+ ");"
+	        		+ "CREATE INDEX trip_id_idx ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_TRIP_ID + ");"
+    				+ "CREATE INDEX stop_id_idx ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_STOP_ID + ");"
+    				+ "CREATE INDEX pickup_type ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_PICKUP_TYPE + ");"
+    				+ "CREATE INDEX dropoff_type_idx ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_DROPOFF_TYPE + ")";
+	        
+    		db.execSQL(CREATE_STOP_TIME_TABLE);
+    	}
+    	catch(Exception e)
+    	{
+    		exceptionMessage("Failed to setup stops database table", e);
+    	}
+    }
+    
+    /*
+     * Create stops table
+     */
+    private void createStopsTable(SQLiteDatabase db) {
+    
+    	try {
+    		// Create stops table
+    		String CREATE_STOPS_TABLE = "CREATE TABLE " + TABLE_STOPS + "("
+	                + STOPS_ID + " VARCHAR(32) NOT NULL PRIMARY KEY," 
+	        		+ STOPS_CODE + " VARCHAR(32),"
+	                + STOPS_NAME + " VARCHAR(255) NOT NULL,"
+	                + STOPS_DESC + " VARCHAR(255),"
+	                + STOPS_LAT + " NUMERIC NOT NULL,"
+	                + STOPS_LON + " NUMERIC NOT NULL,"
+	                + STOPS_ZONE_ID + " VARCHAR(32),"
+	                + STOPS_URL + " VARCHAR(255),"
+	                + STOPS_LOC_TYPE + " INT,"
+	                + STOPS_PARENT_STATION + " VARCHAR(32),"
+	                + STOPS_PLATFORM_CODE + " VARCHAR(32)"
+	        		+ ");"
+    				+ "CREATE INDEX zone_id_idx ON " + TABLE_STOPS + "(" + STOPS_ZONE_ID + ");"
+    				+ "CREATE INDEX lat_idx ON " + TABLE_STOPS + "(" + STOPS_LAT + ");"
+    				+ "CREATE INDEX lon_idx ON " + TABLE_STOPS + "(" + STOPS_LON + ")";
+    			
+    		db.execSQL(CREATE_STOPS_TABLE);
+    	}
+    	catch(Exception e)
+    	{
+    		exceptionMessage("Failed to setup stops database table", e);
+    	}
+    }
+    
+    /*
+     * Create trips table
+     */
+    private void createTripsTable(SQLiteDatabase db) {
+    
+    	try {
+    		// Create table
+    		String CREATE_STRIPS_TABLE = "CREATE TABLE " + TABLE_TRIPS + "("
+	                + TRIPS_ID + " VARCHAR(32) NOT NULL PRIMARY KEY," 
+	        		+ TRIPS_ROUTE_ID + " VARCHAR(32) NOT NULL,"
+	                + TRIPS_SERVICE_ID + " VARCHAR(32) NOT NULL,"
+	                + TRIPS_HEAD_SIGN + " VARCHAR(255),"
+	                + TRIPS_SHORT_NAME + " VARCHAR(255),"
+	                + TRIPS_DIRECTION_ID + " VARCHAR(255),"
+	                + TRIPS_BLOCK_ID + " VARCHAR(32),"
+	                + TRIPS_SHAPE_ID + " VARCHAR(255)"
+	        		+ ");"
+	        		+ "CREATE INDEX route_id_idx ON " + TABLE_TRIPS + "(" + TRIPS_ROUTE_ID + ");"
+    				+ "CREATE INDEX service_id_idx ON " + TABLE_TRIPS + "(" + TRIPS_SERVICE_ID + ");"
+    				+ "CREATE INDEX direction_id_idx ON " + TABLE_TRIPS + "(" + TRIPS_DIRECTION_ID + ");"
+    				+ "CREATE INDEX shape_idx ON " + TABLE_TRIPS + "(" + TRIPS_SHAPE_ID + ")";
+	        
+    		db.execSQL(CREATE_STRIPS_TABLE);
+    	}
+    	catch(Exception e)
+    	{
+    		exceptionMessage("Failed to setup trips database table", e);
+    	}
+    }
+    
     /*
      * Pop up an error message to tell the user what was wrong
      * and print out a stack trace
@@ -309,12 +352,21 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
      */
     public List<String> getAllStopNames() throws Exception {
         
-    	if ( m_stopNameList.isEmpty() || m_stopStationCodeList.isEmpty() ) {
+    	if ( !isTableExists(TABLE_STOPS) ) {
+    		
+    		SQLiteDatabase db = getWritableDatabase();
+    		
+    		createStopsTable(db);
+    		
+    		populateDataToStopsTable();
+    	
+    	}
+    	
+    	if ( m_stopNameList.isEmpty() ) {
     		
     		m_stopNameList.clear();
-    		m_stopStationCodeList.clear();
     		
-	        String selectQuery = "SELECT " + STOPS_NAME + ", " + STOPS_CODE+ " FROM " 
+	        String selectQuery = "SELECT " + STOPS_NAME + " FROM " 
 	        					+ TABLE_STOPS 
 	        					+ " WHERE stop_code <> '' "
 	        					+ "	AND zone_id <> '' "
@@ -325,19 +377,14 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 		        SQLiteDatabase db = this.getReadableDatabase();
 		        Cursor cursor = db.rawQuery(selectQuery, null);
 		
-		        String stop_name = "", stop_code = "";
+		        String stop_name = "";
 		        
 		        if ( cursor.moveToFirst() ) {
 		            do { 
 		            	stop_name = cursor.getString(0);
-		            	stop_code = cursor.getString(1);
 		            	
-		            	if ( (!stop_name.isEmpty()) && (!stop_code.isEmpty()) ) {
+		            	if ( !stop_name.isEmpty() ) {
 		            		m_stopNameList.add(stop_name);
-		            		
-		            		// Keep the code in the same index as the name so we could
-		            		// do the look up later using the name
-		            		m_stopStationCodeList.add(stop_code);
 		            	}
 		            } while ( cursor.moveToNext() );
 		        }
@@ -357,6 +404,16 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
      */
     public List<Stop> getAllStops() throws Exception {
         
+    	if ( !isTableExists(TABLE_STOPS) ) {
+    		
+    		SQLiteDatabase db = getWritableDatabase();
+    		
+    		createStopsTable(db);
+    		
+    		populateDataToStopsTable();
+    	
+    	}
+
     	List<Stop> stopList = new ArrayList<Stop>();
         
         String selectQuery = "SELECT  * FROM " + TABLE_STOPS;
@@ -390,6 +447,46 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
         } catch(Exception e) {
         	throw e;
         }
+    }
+    
+    /*
+     * Get all the route details based on the current source and destination stations, 
+     * and wherether it is southbound or northbound
+     */
+    public ArrayList<RouteDetail> getRouteDetails(String source_station_name, String destination_station_name, String direction) throws Exception {
+    
+    	ArrayList<RouteDetail> detailList = new ArrayList<RouteDetail>();
+    	
+    	String selectQuery = "SELECT 2, '08:56', '09:45', '50', 'Express'";
+
+		try {
+			SQLiteDatabase db = this.getReadableDatabase();
+			Cursor cursor = db.rawQuery(selectQuery, null);
+			
+			if ( cursor.moveToFirst() ) {
+			    do { 
+			    	
+			    	String route_number = cursor.getString(0);
+			    	String route_depart = cursor.getString(1);
+			    	String route_arrive = cursor.getString(2);
+			    	String route_duration = cursor.getString(3);
+			    	String route_type = cursor.getString(4);
+			    	
+			    	if ( !route_number.isEmpty() 
+			    			&& !route_depart.isEmpty() 
+			    			&& !route_arrive.isEmpty() 
+			    			&& !route_duration.isEmpty() 
+			    			&& !route_type.isEmpty()) {
+			    		detailList.add(new RouteDetail(route_number, route_depart, route_arrive, route_duration, route_type));
+			    	}
+			    } while ( cursor.moveToNext() );
+			}
+			
+		} catch(Exception e) {
+			throw e;
+		}
+
+    	return detailList;
     }
     
     /*

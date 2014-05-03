@@ -1,6 +1,7 @@
 package com.khoa.quach.norcalcaltraintimetable;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -18,13 +19,18 @@ import android.widget.RadioButton;
 public class MainTimetableActivity extends Activity {
 	
 	CalTrainDatabaseHelper m_caltrainDb;
-    ListView routeDetailList;
-    RouteDetailInfoAdapter arrayAdapter;
-    ArrayList<RouteDetail> routes;
+	List<String> m_stationNames;
+    ListView m_routeDetailList;
+    RouteDetailInfoAdapter m_arrayAdapter;
+    ArrayList<RouteDetail> m_routes = null;
     int m_current_source_position = 0;
     int m_current_destination_position = 0;
  
     private static final String PREFS_NAME = "NorCalCalTrainSchedules";
+    private static final String PREFS_WEEKDAY_SELECTION = "weekday_selection";
+    private static final String PREFS_WEEKEND_SELECTION = "weekend_selection";
+    private static final String PREFS_SOURCE_SELECTION = "source_selection";
+    private static final String PREFS_DESTINATION_SELECTION = "destination_selection";
     
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -78,8 +84,8 @@ public class MainTimetableActivity extends Activity {
 	        		// Save states
 	        		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0); 
 	        		SharedPreferences.Editor editor = settings.edit();
-	        		editor.putBoolean("button_weekday", checked); 
-	        		editor.putBoolean("button_weekend", false);
+	        		editor.putBoolean(PREFS_WEEKDAY_SELECTION, checked); 
+	        		editor.putBoolean(PREFS_WEEKEND_SELECTION, false);
 	        		editor.commit();
 	        		
 	        	}
@@ -93,58 +99,10 @@ public class MainTimetableActivity extends Activity {
 	        		// Save states
 	        		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0); 
 	        		SharedPreferences.Editor editor = settings.edit();
-	        		editor.putBoolean("button_weekend", checked); 
-	        		editor.putBoolean("button_weekday", false);
+	        		editor.putBoolean(PREFS_WEEKEND_SELECTION, checked); 
+	        		editor.putBoolean(PREFS_WEEKDAY_SELECTION, false);
 	        		editor.commit();
 	    		}
-	    
-	            break;
-	            
-	    }
-	}
-	
-	/*
-	 * Check event on radio buttons and save the states accordingly
-	 */
-	public void onSpinnerStationClicked(View view) {
-	    
-		Spinner spinner_select;
-		
-	    switch( view.getId() ) {
-	    
-	        case R.id.source_station:
-	        
-	        	spinner_select = (Spinner) findViewById(R.id.source_station);
-	        	
-	        	if ( spinner_select != null ) {
-	        		
-	        		m_current_source_position = spinner_select.getSelectedItemPosition();
-	        		
-	        		// Save states
-	        		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0); 
-	        		SharedPreferences.Editor editor = settings.edit();
-	        		editor.putInt("spinner_source", m_current_source_position); 
-	        		editor.commit();
-	        		
-	        	}
-	               
-	            break;
-	        
-	        case R.id.destination_station:
-	            
-	        	spinner_select = (Spinner) findViewById(R.id.source_station);
-	        	
-	        	if ( spinner_select != null ) {
-	        		
-	        		m_current_destination_position = spinner_select.getSelectedItemPosition();
-	        		
-	        		// Save states
-	        		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0); 
-	        		SharedPreferences.Editor editor = settings.edit();
-	        		editor.putInt("spinner_destination", m_current_destination_position); 
-	        		editor.commit();
-	        		
-	        	}
 	    
 	            break;
 	            
@@ -162,35 +120,50 @@ public class MainTimetableActivity extends Activity {
 		
 		populateDataToRouteSelection();
 		
-		populateDataToRouteDetailList();
+		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position);
 	}
 
 	/*
 	 * Build the list of detail route info and bind them to the list view
 	 */
-	private void populateDataToRouteDetailList() {
+	private void populateDataToRouteDetailList(int source_position, int destination_position) {
 	
-		routeDetailList= (ListView)findViewById(R.id.route_info_list);
+		if ( source_position == destination_position) return;
+		
+		m_routeDetailList = (ListView)findViewById(R.id.route_info_list);
          
-        routes = new ArrayList<RouteDetail>();
-        
-        arrayAdapter = new RouteDetailInfoAdapter(this, R.layout.route_info, routes);
-         
-        routeDetailList.setAdapter(arrayAdapter);
+		if ( m_routes == null) {
+			
+			m_routes = new ArrayList<RouteDetail>();
+			
+			if ( m_arrayAdapter == null ) m_arrayAdapter = new RouteDetailInfoAdapter(this, R.layout.route_info, m_routes);
+	         
+	        m_routeDetailList.setAdapter(m_arrayAdapter);
+		}
+		else
+		{
+			m_routes.clear();
+		}
                 
         try
         {
-           RouteDetail route1 = new RouteDetail("1", "20:34", "21:54", "20mins", "Express"); 
-           RouteDetail route2 = new RouteDetail("2", "9:34", "10:54", "30mins", ""); 
-           RouteDetail route3 = new RouteDetail("3", "2:34", "3:54", "20mins", "Express"); 
-           RouteDetail route4 = new RouteDetail("4", "1:34", "2:54", "10mins", ""); 
-           
-           routes.add(route1);
-           routes.add(route2);
-           routes.add(route3);
-           routes.add(route4);
-           
-           arrayAdapter.notifyDataSetChanged();
+        	// Set direction
+        	String direction = source_position>destination_position?"SB":"NB";
+        	
+        	// Get the selected destination names
+        	String source_station_name = m_stationNames.get(source_position);
+        	String destination_station_name = m_stationNames.get(destination_position);
+        	
+        	// Get routes info from database
+        	//m_routes = m_caltrainDb.getRouteDetails(source_station_name, destination_station_name, direction);
+         
+        	m_routes.add(new RouteDetail("3", "12:10", "13:15", "65mins", "Bulet"));
+        	
+        	RouteDetail route1 = new RouteDetail("4", "1:34", "2:54", "10mins", ""); 
+        	
+        	m_routes.add(route1);
+        	
+        	m_arrayAdapter.notifyDataSetChanged();
         }
         catch(Exception e)
         {
@@ -216,33 +189,33 @@ public class MainTimetableActivity extends Activity {
 		//
 		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 		
-		if ( settings.contains("button_weekday")) {
+		if ( settings.contains(PREFS_WEEKDAY_SELECTION)) {
 			
-			boolean button_weekday_setting = settings.getBoolean("button_weekday", false);
+			boolean button_weekday_setting = settings.getBoolean(PREFS_WEEKDAY_SELECTION, false);
 			RadioButton btn = (RadioButton)this.findViewById(R.id.button_weekday);
 			if ( btn != null ) btn.setChecked(button_weekday_setting);
 			
 		}
 		
-		if ( settings.contains("button_weekend") ) {
+		if ( settings.contains(PREFS_WEEKEND_SELECTION) ) {
 			
-			boolean button_weekend_setting = settings.getBoolean("button_weekend", false);
+			boolean button_weekend_setting = settings.getBoolean(PREFS_WEEKEND_SELECTION, false);
 			RadioButton btn = (RadioButton)this.findViewById(R.id.button_weekend);
 			if ( btn != null ) btn.setChecked(button_weekend_setting);
 			
 		}
 		
-		if ( settings.contains("spinner_source")) {
+		if ( settings.contains(PREFS_SOURCE_SELECTION)) {
 			
-			m_current_source_position = settings.getInt("spinner_source", 0);
+			m_current_source_position = settings.getInt(PREFS_SOURCE_SELECTION, 0);
 			Spinner spinner = (Spinner)this.findViewById(R.id.source_station);
 			if ( spinner != null ) spinner.setSelection(m_current_source_position);
 			
 		}
 		
-		if ( settings.contains("spinner_destination") ) {
+		if ( settings.contains(PREFS_DESTINATION_SELECTION) ) {
 			
-			m_current_destination_position = settings.getInt("spinner_destination", 0);
+			m_current_destination_position = settings.getInt(PREFS_DESTINATION_SELECTION, 0);
 			Spinner spinner = (Spinner)this.findViewById(R.id.destination_station);
 			if ( spinner != null ) spinner.setSelection(m_current_destination_position);
 			
@@ -261,8 +234,16 @@ public class MainTimetableActivity extends Activity {
 			public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) { 
 				
 				m_current_source_position = i;
-		        
+				
+				// Save state
+        		SharedPreferences settings = getApplicationContext().getSharedPreferences(PREFS_NAME, 0); 
+        		SharedPreferences.Editor editor = settings.edit();
+        		editor.putInt(PREFS_SOURCE_SELECTION, m_current_source_position); 
+        		editor.commit();
+        		
 				// Re-fresh data in the route list view
+        		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position);
+        		
 			}
 		          
 		    public void onNothingSelected(AdapterView<?> arg0) {
@@ -277,8 +258,15 @@ public class MainTimetableActivity extends Activity {
 			public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) { 
 				
 				m_current_destination_position = i;
-		             
+		     
+				// Save state
+        		SharedPreferences settings = getApplicationContext().getSharedPreferences(PREFS_NAME, 0); 
+        		SharedPreferences.Editor editor = settings.edit();
+        		editor.putInt(PREFS_DESTINATION_SELECTION, m_current_destination_position); 
+        		editor.commit();
+        		
 				// Re-fresh data in the route list view
+        		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position);
 				
 			}
 		          
@@ -296,14 +284,15 @@ public class MainTimetableActivity extends Activity {
 		try {
 		
 			m_caltrainDb.populateDataToStopsTable();
-	
+			m_stationNames = m_caltrainDb.getAllStopNames();
+			
 			Spinner source_spinner = (Spinner) findViewById(R.id.source_station);
-			ArrayAdapter<String> source_adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, m_caltrainDb.getAllStopNames());
+			ArrayAdapter<String> source_adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, m_stationNames);
 			source_adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 			source_spinner.setAdapter(source_adapter);
 			
 			Spinner destination_spinner = (Spinner) findViewById(R.id.destination_station);
-			ArrayAdapter<String> destination_adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, m_caltrainDb.getAllStopNames());
+			ArrayAdapter<String> destination_adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, m_stationNames);
 			destination_adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 			destination_spinner.setAdapter(destination_adapter);
 			
