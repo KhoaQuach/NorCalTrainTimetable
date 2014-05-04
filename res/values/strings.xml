@@ -11,5 +11,10 @@
     <string name="stops_csv">gtfs/stops.txt</string>
     <string name="stop_times_csv">gtfs/stop_times.txt</string>
     <string name="trips_csv">gtfs/trips.txt</string>
+	<string name="calendar_dates_csv">gtfs/calendar_dates.txt</string>
+	<string name="calendar_csv">gtfs/calendar.txt</string>
+	<string name="fare_attributes_csv">gtfs/fare_attributes.txt</string>
+	<string name="fare_rules_csv">gtfs/fare_rules.txt</string>
+	<string name="shapes_csv">gtfs/shapes.txt</string>
 
 </resources>

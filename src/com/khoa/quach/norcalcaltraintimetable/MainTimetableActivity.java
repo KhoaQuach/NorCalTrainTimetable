@@ -20,9 +20,6 @@ public class MainTimetableActivity extends Activity {
 	
 	CalTrainDatabaseHelper m_caltrainDb;
 	List<String> m_stationNames;
-    ListView m_routeDetailList;
-    RouteDetailInfoAdapter m_arrayAdapter;
-    ArrayList<RouteDetail> m_routes = null;
     int m_current_source_position = 0;
     int m_current_destination_position = 0;
  
@@ -109,6 +106,24 @@ public class MainTimetableActivity extends Activity {
 	    }
 	}
 	
+	 /*
+     * Pop up an error message to tell the user what was wrong
+     * and print out a stack trace
+     */
+    private void exceptionMessage(String title, Exception e) {
+    	
+    	AlertDialog.Builder messageBox = new AlertDialog.Builder(this);
+        messageBox.setTitle(title);
+        messageBox.setMessage(e.getMessage());
+        messageBox.setCancelable(false);
+        messageBox.setNeutralButton("OK", null);
+        messageBox.show();
+        
+    }
+    
+    /*
+     * Return database helper instance
+     */
 	public CalTrainDatabaseHelper getDbHelper() {
 		return m_caltrainDb;
 	}
@@ -128,23 +143,6 @@ public class MainTimetableActivity extends Activity {
 	 */
 	private void populateDataToRouteDetailList(int source_position, int destination_position) {
 	
-		if ( source_position == destination_position) return;
-		
-		m_routeDetailList = (ListView)findViewById(R.id.route_info_list);
-         
-		if ( m_routes == null) {
-			
-			m_routes = new ArrayList<RouteDetail>();
-			
-			if ( m_arrayAdapter == null ) m_arrayAdapter = new RouteDetailInfoAdapter(this, R.layout.route_info, m_routes);
-	         
-	        m_routeDetailList.setAdapter(m_arrayAdapter);
-		}
-		else
-		{
-			m_routes.clear();
-		}
-                
         try
         {
         	// Set direction
@@ -154,26 +152,24 @@ public class MainTimetableActivity extends Activity {
         	String source_station_name = m_stationNames.get(source_position);
         	String destination_station_name = m_stationNames.get(destination_position);
         	
-        	// Get routes info from database
-        	//m_routes = m_caltrainDb.getRouteDetails(source_station_name, destination_station_name, direction);
-         
-        	m_routes.add(new RouteDetail("3", "12:10", "13:15", "65mins", "Bulet"));
+        	ListView routeDetailList = (ListView)findViewById(R.id.route_info_list);
+        
+        	ArrayList<RouteDetail> routes = new ArrayList<RouteDetail>();
         	
-        	RouteDetail route1 = new RouteDetail("4", "1:34", "2:54", "10mins", ""); 
+        	if ( source_position != destination_position ) {
+        		// Get routes info from database
+        		routes = m_caltrainDb.getRouteDetails(source_station_name, destination_station_name, direction);
+        	}
         	
-        	m_routes.add(route1);
+        	// Bind data to the interface
+        	RouteDetailInfoAdapter arrayAdapter = new RouteDetailInfoAdapter(this, R.layout.route_info, routes);
+        	routeDetailList.setAdapter(arrayAdapter);
         	
-        	m_arrayAdapter.notifyDataSetChanged();
+        	arrayAdapter.notifyDataSetChanged();
         }
         catch(Exception e)
         {
-        	AlertDialog.Builder messageBox = new AlertDialog.Builder(this);
-	        messageBox.setTitle("Unexpect error...sorry...");
-	        messageBox.setMessage(e.getMessage());
-	        messageBox.setCancelable(false);
-	        messageBox.setNeutralButton("OK", null);
-	        messageBox.show();
-	        
+        	exceptionMessage("Failed to get route detail list", e);
 			e.printStackTrace();
         }
         
@@ -297,13 +293,7 @@ public class MainTimetableActivity extends Activity {
 			destination_spinner.setAdapter(destination_adapter);
 			
 		} catch(Exception e) {
-			AlertDialog.Builder messageBox = new AlertDialog.Builder(this);
-	        messageBox.setTitle("Unexpect error...sorry...");
-	        messageBox.setMessage(e.getMessage());
-	        messageBox.setCancelable(false);
-	        messageBox.setNeutralButton("OK", null);
-	        messageBox.show();
-	        
+			exceptionMessage("Failed to load last run settings", e);
 			e.printStackTrace();
 		}
 	}

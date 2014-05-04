@@ -6,7 +6,7 @@ public class RouteDetail {
     String route_depart;
     String route_arrive;
     String route_duration;
-    String route_type;
+    String route_fare;
     
     // Empty constructor
     public RouteDetail(){}
@@ -15,12 +15,12 @@ public class RouteDetail {
     		    String _route_depart, 
     		    String _route_arrive,
     		    String _route_duration,
-    		    String _route_type){
+    		    String _route_fare){
     	this.route_number = _route_number;
         this.route_depart = _route_depart;
         this.route_arrive = _route_arrive;
         this.route_duration = _route_duration;
-        this.route_type = _route_type;
+        this.route_fare = _route_fare;
     }
      
     public String getRouteNumber(){
@@ -55,12 +55,12 @@ public class RouteDetail {
         this.route_duration = _route_duration;
     }
     
-    public String getRouteType(){
-        return this.route_type;
+    public String getRouteFare(){
+        return this.route_fare;
     }
      
-    public void setRouteType(String _route_type){
-        this.route_type = _route_type;
+    public void setRouteType(String _route_fare){
+        this.route_fare = _route_fare;
     }
     
 }

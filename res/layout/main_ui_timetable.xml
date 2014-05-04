@@ -89,8 +89,8 @@
 	   		android:layout_weight="1.0"/>
 		
 		<TextView
-	   		android:id="@+id/route_type_label"
-	   		android:text="Type"
+	   		android:id="@+id/fare_label"
+	   		android:text="Fare"
 	   		android:layout_width="0dp"
 	   		android:layout_height="wrap_content"
 	   		android:gravity="left"
