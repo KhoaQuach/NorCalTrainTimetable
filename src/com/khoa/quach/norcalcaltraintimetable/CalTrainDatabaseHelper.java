@@ -5,16 +5,20 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.res.Resources.NotFoundException;
+import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.text.format.DateFormat;
  
 public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 
@@ -22,7 +26,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 	List<String> m_stopNameList = new ArrayList<String>();
 	
 	// Initial version
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2;
  
     // Database Name
     private static final String DATABASE_NAME = "Caltrain_GTFS";
@@ -107,7 +111,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     //
     // route_id,service_id,trip_id,trip_headsign,trip_short_name,direction_id,block_id,shape_id
     //
-    private static final String TRIPS_ROUTE_ID		= "route_route_id";
+    private static final String TRIPS_ROUTE_ID		= "route_id";
     private static final String TRIPS_SERVICE_ID 	= "service_id";
     private static final String TRIPS_TRIP_ID 		= "trip_id";
     private static final String TRIPS_HEAD_SIGN 	= "trip_headsign";
@@ -189,6 +193,30 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
         
     }
  
+    /*
+     * Build appropriate query statement to get data from database
+     */
+    private String BuildQueryStatement(String source_station_name, String destination_station_name, String direction, boolean isWeekdaySchedule) {
+    	
+    	String queryStatement = "";
+    	
+    	// Get current date in this format, YYYYMMDD
+    	SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMdd");
+    	dateFormatter.setLenient(false);
+    	String today = dateFormatter.format(new Date());
+    	
+	    if (isWeekdaySchedule) {
+	   		String contents = getFileContents("queries/weekday.txt");
+	   		queryStatement = String.format(contents, direction, today, today, today, source_station_name, destination_station_name);
+	    }
+	    else {
+	    	String contents = getFileContents("queries/weekend.txt");
+	    	queryStatement = String.format(contents, direction, today, today, today, source_station_name, destination_station_name);
+	    }
+    	
+    	return queryStatement;
+    }
+    
     /*
      * Create calendar_dates table
      */
@@ -572,13 +600,35 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     }
     
     /*
+     * Get contents of input file name 
+     */
+    private String getFileContents(String fileName) {
+    	AssetManager am = myContext.getAssets();
+    	try {
+    		
+    		InputStream is = am.open(fileName);
+    		BufferedReader r = new BufferedReader(new InputStreamReader(is));
+    		StringBuilder contents = new StringBuilder();
+    		String line;
+    		while ((line = r.readLine()) != null) {
+    			contents.append(line);
+    		}
+    	
+    		return contents.toString();
+    	} catch(IOException ioe) {
+    		return "";
+    	}
+    }
+    
+    /*
      * Get all the route details based on the current source and destination stations, 
      * and wherether it is southbound or northbound
      */
-    public ArrayList<RouteDetail> getRouteDetails(String source_station_name, String destination_station_name, String direction) throws Exception {
+    public ArrayList<RouteDetail> getRouteDetails(String source_station_name, String destination_station_name, String direction, boolean isWeekdaySchedule) throws Exception {
     
     	ArrayList<RouteDetail> detailList = new ArrayList<RouteDetail>();
-
+    	String route_number = "", route_depart = "", route_arrive = "";
+    	
     	// Populate data if they're not there
     	this.populateDataToCalendarDatesTable();
     	this.populateDataToCalendarTable();
@@ -590,8 +640,9 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	this.populateDataToStopTimesTable();
     	this.populateDataToTripsTable();
     	
-    	String selectQuery = "SELECT 2, '08:56', '09:45', '50', '3.50'";
-
+    	//String selectQuery = "SELECT 2, '08:56', '09:45', '50', '3.50'";
+    	String selectQuery = BuildQueryStatement(source_station_name, destination_station_name, direction, isWeekdaySchedule);
+    	
 		try {
 			SQLiteDatabase db = this.getReadableDatabase();
 			Cursor cursor = db.rawQuery(selectQuery, null);
@@ -599,6 +650,19 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			if ( cursor.moveToFirst() ) {
 			    do { 
 			    	
+			    	//
+			    	// Marshal the data
+			    	//
+			    	
+			    	if (source_station_name.compareTo(cursor.getString(0)) == 0) {
+			    		
+			    	}
+			    	else if (destination_station_name.compareTo(cursor.getString(0)) == 0) {
+			    		
+			    	}
+			    	
+			    	
+			    	/*
 			    	String route_number = cursor.getString(0);
 			    	String route_depart = cursor.getString(1);
 			    	String route_arrive = cursor.getString(2);
@@ -612,6 +676,8 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			    			&& !route_fare.isEmpty()) {
 			    		detailList.add(new RouteDetail(route_number, route_depart, route_arrive, route_duration, route_fare));
 			    	}
+			    	*/
+			    	
 			    } while ( cursor.moveToNext() );
 			}
 			
@@ -1004,5 +1070,36 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	
     }
     
+    /*
+     * Check if we need to populate data to tables on first run or on database upgrade
+     */
+    public void SetupDatabaseTables() {
+    	try
+    	{
+	    	if ((getTableCount(TABLE_TRIPS)) <= 0 
+	    			|| (getTableCount(TABLE_STOPS) <= 0) 
+	    			|| (getTableCount(TABLE_STOP_TIMES) <= 0)
+	    			|| (getTableCount(TABLE_SHAPES) <= 0)
+	    			|| (getTableCount(TABLE_ROUTES) <= 0)
+	    			|| (getTableCount(TABLE_FARE_RULES) <= 0)
+	    			|| (getTableCount(TABLE_FARE_ATTRIBUTES) <= 0)
+	    			|| (getTableCount(TABLE_CALENDAR_DATES) <= 0)
+	    			|| (getTableCount(TABLE_CALENDAR) <= 0)
+	    			) {
+	    		// Configure data for the first time 
+		    	this.populateDataToCalendarDatesTable();
+		    	this.populateDataToCalendarTable();
+		    	this.populateDataToFareAttributesTable();
+		    	this.populateDataToFareRulesTable();
+		    	this.populateDataToShapesTable();
+		    	this.populateDataToRoutesTable();
+		    	this.populateDataToStopsTable();
+		    	this.populateDataToStopTimesTable();
+		    	this.populateDataToTripsTable();
+	    	}
+    	} catch (Exception e) {
+    		e.printStackTrace();
+    	}
+    }
 }
 

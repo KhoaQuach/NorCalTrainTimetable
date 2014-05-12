@@ -22,6 +22,7 @@ public class MainTimetableActivity extends Activity {
 	List<String> m_stationNames;
     int m_current_source_position = 0;
     int m_current_destination_position = 0;
+    boolean m_isWeekdaySchedule = false;
  
     private static final String PREFS_NAME = "NorCalCalTrainSchedules";
     private static final String PREFS_WEEKDAY_SELECTION = "weekday_selection";
@@ -37,6 +38,7 @@ public class MainTimetableActivity extends Activity {
 		Thread.setDefaultUncaughtExceptionHandler(new MyExceptionHandler());
 		
 		m_caltrainDb = new CalTrainDatabaseHelper(this);
+		m_caltrainDb.SetupDatabaseTables();
 		
 		populateDataToDisplay();
 		
@@ -78,6 +80,8 @@ public class MainTimetableActivity extends Activity {
 	        
 	        	if (checked) {
 	        		
+	        		this.m_isWeekdaySchedule = true;
+	        		
 	        		// Save states
 	        		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0); 
 	        		SharedPreferences.Editor editor = settings.edit();
@@ -92,6 +96,8 @@ public class MainTimetableActivity extends Activity {
 	        case R.id.button_weekend:
 	            
 	        	if (checked) {
+	        		
+	        		this.m_isWeekdaySchedule = false;
 	        		
 	        		// Save states
 	        		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0); 
@@ -135,13 +141,13 @@ public class MainTimetableActivity extends Activity {
 		
 		populateDataToRouteSelection();
 		
-		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position);
+		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_isWeekdaySchedule);
 	}
 
 	/*
 	 * Build the list of detail route info and bind them to the list view
 	 */
-	private void populateDataToRouteDetailList(int source_position, int destination_position) {
+	private void populateDataToRouteDetailList(int source_position, int destination_position, boolean isWeekdaySchedule) {
 	
         try
         {
@@ -158,7 +164,7 @@ public class MainTimetableActivity extends Activity {
         	
         	if ( source_position != destination_position ) {
         		// Get routes info from database
-        		routes = m_caltrainDb.getRouteDetails(source_station_name, destination_station_name, direction);
+        		routes = m_caltrainDb.getRouteDetails(source_station_name, destination_station_name, direction, isWeekdaySchedule);
         	}
         	
         	// Bind data to the interface
@@ -238,7 +244,7 @@ public class MainTimetableActivity extends Activity {
         		editor.commit();
         		
 				// Re-fresh data in the route list view
-        		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position);
+        		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_isWeekdaySchedule);
         		
 			}
 		          
@@ -262,7 +268,7 @@ public class MainTimetableActivity extends Activity {
         		editor.commit();
         		
 				// Re-fresh data in the route list view
-        		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position);
+        		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_isWeekdaySchedule);
 				
 			}
 		          
