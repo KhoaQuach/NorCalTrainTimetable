@@ -8,7 +8,9 @@ import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Hashtable;
 import java.util.List;
+import java.util.Locale;
 
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -201,7 +203,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	String queryStatement = "";
     	
     	// Get current date in this format, YYYYMMDD
-    	SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMdd");
+    	SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMdd", Locale.US);
     	dateFormatter.setLenient(false);
     	String today = dateFormatter.format(new Date());
     	
@@ -534,7 +536,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 		            	stop_name = cursor.getString(0);
 		            	
 		            	if ( !stop_name.isEmpty() ) {
-		            		m_stopNameList.add(stop_name);
+		            		m_stopNameList.add(stop_name.trim());
 		            	}
 		            } while ( cursor.moveToNext() );
 		        }
@@ -612,6 +614,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     		String line;
     		while ((line = r.readLine()) != null) {
     			contents.append(line);
+    			contents.append("\n");
     		}
     	
     		return contents.toString();
@@ -627,7 +630,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     public ArrayList<RouteDetail> getRouteDetails(String source_station_name, String destination_station_name, String direction, boolean isWeekdaySchedule) throws Exception {
     
     	ArrayList<RouteDetail> detailList = new ArrayList<RouteDetail>();
-    	String route_number = "", route_depart = "", route_arrive = "";
+    	String route_number = "";
     	
     	// Populate data if they're not there
     	this.populateDataToCalendarDatesTable();
@@ -648,35 +651,47 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			Cursor cursor = db.rawQuery(selectQuery, null);
 			
 			if ( cursor.moveToFirst() ) {
+				
+				// Data is temporarily held here
+				Hashtable<String, RouteDetail> routeTempDetail = new Hashtable<String, RouteDetail>();
+				RouteDetail newRouteDetail;
+				
 			    do { 
 			    	
 			    	//
 			    	// Marshal the data
 			    	//
 			    	
-			    	if (source_station_name.compareTo(cursor.getString(0)) == 0) {
+			    	if (source_station_name.compareTo(cursor.getString(0).trim()) == 0) {
+			    		
+			    		newRouteDetail = new RouteDetail();
+			    		
+			    		//
+			    		// The row data belong to source station, save them into a hashable list
+			    		//
+			    		route_number = cursor.getString(1).trim();
+			    		newRouteDetail.setRouteNumber(route_number);
+			    		newRouteDetail.setRouteDepart(cursor.getString(2).trim());
+			    		
+			    		// Save it in a temporary hashtable object
+			    		routeTempDetail.put(route_number, newRouteDetail);
 			    		
 			    	}
-			    	else if (destination_station_name.compareTo(cursor.getString(0)) == 0) {
+			    	else if (destination_station_name.compareTo(cursor.getString(0).trim()) == 0) {
+			    		
+			    		//
+			    		// The row data belongs to destination station, get the existing route detail
+			    		// based on the route number from the hashable list
+			    		//
+			    		route_number = cursor.getString(1).trim();
+			    		newRouteDetail = routeTempDetail.get(route_number);
+			    		
+			    		if ( newRouteDetail != null ) {
+			    			newRouteDetail.setRouteArrive(cursor.getString(2).trim());
+			    			detailList.add(newRouteDetail);
+			    		}
 			    		
 			    	}
-			    	
-			    	
-			    	/*
-			    	String route_number = cursor.getString(0);
-			    	String route_depart = cursor.getString(1);
-			    	String route_arrive = cursor.getString(2);
-			    	String route_duration = cursor.getString(3);
-			    	String route_fare = cursor.getString(4);
-			    	
-			    	if ( !route_number.isEmpty() 
-			    			&& !route_depart.isEmpty() 
-			    			&& !route_arrive.isEmpty() 
-			    			&& !route_duration.isEmpty() 
-			    			&& !route_fare.isEmpty()) {
-			    		detailList.add(new RouteDetail(route_number, route_depart, route_arrive, route_duration, route_fare));
-			    	}
-			    	*/
 			    	
 			    } while ( cursor.moveToNext() );
 			}

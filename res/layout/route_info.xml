@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="horizontal" 
-    android:weightSum="5">
+    android:weightSum="4">
 
     <TextView
         android:id="@+id/route_number"
@@ -36,12 +36,5 @@
         android:layout_weight="1"
         android:gravity="left"
         android:text="Duration" />
-
-    <TextView
-        android:id="@+id/route_fare"
-        android:layout_width="0dip"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:gravity="left" />
 
 </LinearLayout>

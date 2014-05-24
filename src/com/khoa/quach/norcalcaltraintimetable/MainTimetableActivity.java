@@ -1,12 +1,18 @@
 package com.khoa.quach.norcalcaltraintimetable;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.format.Time;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -141,7 +147,9 @@ public class MainTimetableActivity extends Activity {
 		
 		populateDataToRouteSelection();
 		
-		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_isWeekdaySchedule);
+		if (m_current_source_position != m_current_destination_position) {
+			populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_isWeekdaySchedule);
+		}
 	}
 
 	/*
@@ -152,15 +160,17 @@ public class MainTimetableActivity extends Activity {
         try
         {
         	// Set direction
-        	String direction = source_position>destination_position?"SB":"NB";
+        	String direction = source_position>destination_position?"NB":"SB";
         	
         	// Get the selected destination names
         	String source_station_name = m_stationNames.get(source_position);
         	String destination_station_name = m_stationNames.get(destination_position);
         	
         	ListView routeDetailList = (ListView)findViewById(R.id.route_info_list);
-        
+        	routeDetailList.setSelection(0);
+        	
         	ArrayList<RouteDetail> routes = new ArrayList<RouteDetail>();
+        	//routes.add(new RouteDetail("1", "07:10:00", "08:00:00", "50", "4.0"));
         	
         	if ( source_position != destination_position ) {
         		// Get routes info from database
@@ -170,6 +180,31 @@ public class MainTimetableActivity extends Activity {
         	// Bind data to the interface
         	RouteDetailInfoAdapter arrayAdapter = new RouteDetailInfoAdapter(this, R.layout.route_info, routes);
         	routeDetailList.setAdapter(arrayAdapter);
+        	
+        	// Update to visible position that close to current time
+        	SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss");
+        	
+        	Date depart = null;
+            Date now = new Date();
+            
+            final Calendar c = Calendar.getInstance(TimeZone.getDefault());
+            
+            String current_time = c.get(Calendar.HOUR_OF_DAY) + ":" + c.get(Calendar.MINUTE) + ":" + c.get(Calendar.SECOND);
+            now = format.parse(current_time);
+            
+            int position = 0;
+        	
+        	for (RouteDetail r: routes) {
+        		
+        		depart = format.parse(r.getRouteDepart());
+        		
+        		if ( (60*1000*30) <= (depart.getTime() - now.getTime()) ) {
+        			routeDetailList.setSelection(position);
+        			break;
+        		}
+        		
+        		position++;
+        	}
         	
         	arrayAdapter.notifyDataSetChanged();
         }
@@ -193,10 +228,9 @@ public class MainTimetableActivity extends Activity {
 		
 		if ( settings.contains(PREFS_WEEKDAY_SELECTION)) {
 			
-			boolean button_weekday_setting = settings.getBoolean(PREFS_WEEKDAY_SELECTION, false);
+			m_isWeekdaySchedule = settings.getBoolean(PREFS_WEEKDAY_SELECTION, false);
 			RadioButton btn = (RadioButton)this.findViewById(R.id.button_weekday);
-			if ( btn != null ) btn.setChecked(button_weekday_setting);
-			
+			if ( btn != null ) btn.setChecked(m_isWeekdaySchedule);
 		}
 		
 		if ( settings.contains(PREFS_WEEKEND_SELECTION) ) {
@@ -204,6 +238,8 @@ public class MainTimetableActivity extends Activity {
 			boolean button_weekend_setting = settings.getBoolean(PREFS_WEEKEND_SELECTION, false);
 			RadioButton btn = (RadioButton)this.findViewById(R.id.button_weekend);
 			if ( btn != null ) btn.setChecked(button_weekend_setting);
+			if (button_weekend_setting) m_isWeekdaySchedule = false;
+			else m_isWeekdaySchedule = true;
 			
 		}
 		
@@ -243,9 +279,10 @@ public class MainTimetableActivity extends Activity {
         		editor.putInt(PREFS_SOURCE_SELECTION, m_current_source_position); 
         		editor.commit();
         		
-				// Re-fresh data in the route list view
-        		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_isWeekdaySchedule);
-        		
+        		if (m_current_source_position != m_current_destination_position) {
+        			// Re-fresh data in the route list view
+        			populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_isWeekdaySchedule);
+        		}
 			}
 		          
 		    public void onNothingSelected(AdapterView<?> arg0) {
@@ -267,9 +304,10 @@ public class MainTimetableActivity extends Activity {
         		editor.putInt(PREFS_DESTINATION_SELECTION, m_current_destination_position); 
         		editor.commit();
         		
-				// Re-fresh data in the route list view
-        		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_isWeekdaySchedule);
-				
+        		if ( m_current_source_position != m_current_destination_position ) {
+        			// Re-fresh data in the route list view
+        			populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_isWeekdaySchedule);
+        		}
 			}
 		          
 		    public void onNothingSelected(AdapterView<?> arg0) {

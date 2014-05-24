@@ -46,13 +46,11 @@ public class RouteDetailInfoAdapter extends ArrayAdapter<RouteDetail> {
         TextView routeDepartText = (TextView) routeDetailView.findViewById(R.id.route_depart);
         TextView routeArriveText = (TextView) routeDetailView.findViewById(R.id.route_arrive);
         TextView routeDurationText = (TextView) routeDetailView.findViewById(R.id.route_duration);
-        TextView routeFareText = (TextView) routeDetailView.findViewById(R.id.route_fare);
          
         routeNumberText.setText(routeDetail.getRouteNumber());
         routeDepartText.setText(routeDetail.getRouteDepart());
         routeArriveText.setText(routeDetail.getRouteArrive());
         routeDurationText.setText(routeDetail.getRouteDuration());
-        routeFareText.setText("$" + routeDetail.getRouteFare());
          
         return routeDetailView;
     }

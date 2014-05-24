@@ -54,7 +54,7 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:weightSum="5" >
+        android:weightSum="4" >
         
 		<TextView
 			android:id="@+id/route_number_label"
@@ -88,13 +88,6 @@
 	   		android:gravity="left"
 	   		android:layout_weight="1.0"/>
 		
-		<TextView
-	   		android:id="@+id/fare_label"
-	   		android:text="Fare"
-	   		android:layout_width="0dp"
-	   		android:layout_height="wrap_content"
-	   		android:gravity="left"
-	   		android:layout_weight="1.0"/>
   	</LinearLayout>
     
     <ListView
