@@ -6,7 +6,7 @@ join stop_times st on st.trip_id = t.trip_id
 join stops s on s.stop_id = st.stop_id and s.platform_code = "%s" and zone_id > 0
 left join calendar_dates cd on cd.service_id = c.service_id and cd.date = %s
 where
-    c.saturday = 1 and c.sunday = 1 
+    c.sunday = 1 
     and c.start_date <= %s
     and (c.end_date is null or %s <= c.end_date)
     and cd.service_id is null

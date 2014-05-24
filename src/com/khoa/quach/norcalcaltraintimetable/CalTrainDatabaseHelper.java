@@ -28,7 +28,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 	List<String> m_stopNameList = new ArrayList<String>();
 	
 	// Initial version
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 1;
  
     // Database Name
     private static final String DATABASE_NAME = "Caltrain_GTFS";
@@ -36,16 +36,28 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     //
     // All the table names
     //
-    private static final String TABLE_STOPS 			= "stops";
-    private static final String TABLE_TRIPS 			= "trips";
-    private static final String TABLE_STOP_TIMES 		= "stop_times";
-    private static final String TABLE_ROUTES 			= "routes";
-    private static final String TABLE_CALENDAR_DATES	= "calendar_dates";
+    private static final String TABLE_AGENCY			= "agency";
     private static final String TABLE_CALENDAR			= "calendar";
+    private static final String TABLE_CALENDAR_DATES	= "calendar_dates";
     private static final String TABLE_FARE_ATTRIBUTES	= "fare_attributes";
     private static final String TABLE_FARE_RULES		= "fare_rules";
+    private static final String TABLE_ROUTES 			= "routes";
     private static final String TABLE_SHAPES			= "shapes";
+    private static final String TABLE_STOPS 			= "stops";
+    private static final String TABLE_STOP_TIMES 		= "stop_times";
+    private static final String TABLE_TRIPS 			= "trips";
     
+    //
+    // agency column names
+    //
+    private static final String AGENCY_NAME			= "name";
+    private static final String AGENCY_URL 			= "url";
+    private static final String AGENCY_TIMEZONE 	= "timezone";
+    private static final String AGENCY_LANGUAGE 	= "language";
+    private static final String AGENCY_PHONE 		= "phone";
+    private static final String AGENCY_ID 			= "id";
+    
+    //
     //
     // calendar_dates column names
     //
@@ -158,6 +170,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     public void onCreate(SQLiteDatabase db) {
     	
     	// Create tables
+    	createAgencyTable(db);
     	createCalendarDatesTable(db);
     	createCalendarTable(db);
     	createFareAttributesTable(db);
@@ -177,6 +190,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	try {
     		
     		// Drop older table if existed
+    		db.execSQL("DROP TABLE IF EXISTS " + TABLE_AGENCY);
     		db.execSQL("DROP TABLE IF EXISTS " + TABLE_CALENDAR_DATES);
     		db.execSQL("DROP TABLE IF EXISTS " + TABLE_CALENDAR);
     		db.execSQL("DROP TABLE IF EXISTS " + TABLE_FARE_ATTRIBUTES);
@@ -198,25 +212,49 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     /*
      * Build appropriate query statement to get data from database
      */
-    private String BuildQueryStatement(String source_station_name, String destination_station_name, String direction, boolean isWeekdaySchedule) {
+    private String BuildQueryStatement(String source_station_name, String destination_station_name, String direction, ScheduleEnum selectedSchedule) {
     	
-    	String queryStatement = "";
+    	String queryStatement = "", contents = "";
     	
     	// Get current date in this format, YYYYMMDD
     	SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMdd", Locale.US);
     	dateFormatter.setLenient(false);
     	String today = dateFormatter.format(new Date());
     	
-	    if (isWeekdaySchedule) {
-	   		String contents = getFileContents("queries/weekday.txt");
+    	switch (selectedSchedule) {
+    	case WEEKDAY:
+    		contents = getFileContents("queries/weekday.txt");
 	   		queryStatement = String.format(contents, direction, today, today, today, source_station_name, destination_station_name);
-	    }
-	    else {
-	    	String contents = getFileContents("queries/weekend.txt");
-	    	queryStatement = String.format(contents, direction, today, today, today, source_station_name, destination_station_name);
-	    }
+    		break;
+    	case SATURDAY:
+    		contents = getFileContents("queries/saturday.txt");
+	   		queryStatement = String.format(contents, direction, today, today, today, source_station_name, destination_station_name);
+    		break;
+    	case SUNDAY:
+    		contents = getFileContents("queries/sunday.txt");
+	   		queryStatement = String.format(contents, direction, today, today, today, source_station_name, destination_station_name);
+    		break;
+    	}
     	
     	return queryStatement;
+    }
+    
+    /*
+     * Create agency table
+     */
+    private void createAgencyTable(SQLiteDatabase db) {
+    	  
+		// Create table
+		String CREATE_AGENCY_TABLE = "CREATE TABLE " + TABLE_AGENCY + "("
+                + AGENCY_NAME + " VARCHAR(255) NOT NULL," 
+        		+ AGENCY_URL + " VARCHAR(255),"
+                + AGENCY_TIMEZONE + " VARCHAR(10),"
+                + AGENCY_LANGUAGE + " VARCHAR(32),"
+                + AGENCY_PHONE + " VARCHAR(64),"
+                + AGENCY_ID + " VARCHAR(32)"
+        		+ ");";
+				
+		db.execSQL(CREATE_AGENCY_TABLE);	
     }
     
     /*
@@ -326,7 +364,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
                 + ROUTES_LONG_NAME + " VARCHAR(255),"
                 + ROUTES_DESC + " VARCHAR(255),"
                 + ROUTES_TYPE + " smallint,"
-                + ROUTES_URL + " VARCHAR(255),"
+                + ROUTES_URL + " VARCHAR(255) NULL,"
                 + ROUTES_COLOR + " VARCHAR(255) NULL"
         		+ ")";
         
@@ -627,12 +665,13 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
      * Get all the route details based on the current source and destination stations, 
      * and wherether it is southbound or northbound
      */
-    public ArrayList<RouteDetail> getRouteDetails(String source_station_name, String destination_station_name, String direction, boolean isWeekdaySchedule) throws Exception {
+    public ArrayList<RouteDetail> getRouteDetails(String source_station_name, String destination_station_name, String direction, ScheduleEnum selectedSchedule) throws Exception {
     
     	ArrayList<RouteDetail> detailList = new ArrayList<RouteDetail>();
     	String route_number = "";
     	
     	// Populate data if they're not there
+    	this.populateDataToAgencyTable();
     	this.populateDataToCalendarDatesTable();
     	this.populateDataToCalendarTable();
     	this.populateDataToFareAttributesTable();
@@ -644,7 +683,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	this.populateDataToTripsTable();
     	
     	//String selectQuery = "SELECT 2, '08:56', '09:45', '50', '3.50'";
-    	String selectQuery = BuildQueryStatement(source_station_name, destination_station_name, direction, isWeekdaySchedule);
+    	String selectQuery = BuildQueryStatement(source_station_name, destination_station_name, direction, selectedSchedule);
     	
 		try {
 			SQLiteDatabase db = this.getReadableDatabase();
@@ -749,6 +788,44 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     }
     
     /*
+     * Populate data to agency table from csv file 
+     */
+    public void populateDataToAgencyTable() throws Exception {
+    	
+    	if ( 0 < getTableCount(TABLE_AGENCY) ) return;
+        
+    	String line = "";
+    	
+    	try {
+    		InputStream is = myContext.getAssets().open(myContext.getResources().getString(R.string.agency_csv));
+    		BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+    		
+    		// Skip first line
+    		br.readLine();
+    		
+			while ( (line = br.readLine()) != null ) {
+				
+			    String[] RowData = line.split(",");  
+			    ContentValues values = new ContentValues();  
+			    values.put(AGENCY_NAME, TrimWhiteSpacesOrDoubleQuotes(RowData[0]));  
+			    values.put(AGENCY_URL, TrimWhiteSpacesOrDoubleQuotes(RowData[1]));  
+			    values.put(AGENCY_TIMEZONE, TrimWhiteSpacesOrDoubleQuotes(RowData[2]));  
+			    values.put(AGENCY_LANGUAGE, TrimWhiteSpacesOrDoubleQuotes(RowData[3]));  
+			    values.put(AGENCY_PHONE, TrimWhiteSpacesOrDoubleQuotes(RowData[4]));  
+			    values.put(AGENCY_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[5]));  
+			    
+			    this.getWritableDatabase().insert(TABLE_AGENCY, null, values); 
+			    
+			}
+			
+			br.close();  
+    	} catch	(Exception e) {
+			throw e;
+		}	
+    	
+    }
+    
+    /*
      * Populate data to calendar_dates table from csv file 
      */
     public void populateDataToCalendarDatesTable() throws Exception {
@@ -761,13 +838,16 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     		InputStream is = myContext.getAssets().open(myContext.getResources().getString(R.string.calendar_dates_csv));
     		BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
     		
+    		// Skip first line
+    		br.readLine();
+    		
 			while ( (line = br.readLine()) != null ) {
 				
 			    String[] RowData = line.split(",");  
 			    ContentValues values = new ContentValues();  
-			    values.put(CALENDAR_DATES_SERVICE_ID, RowData[0]);  
-			    values.put(CALENDAR_DATES_DATE, RowData[1]);  
-			    values.put(CALENDAR_DATES_EXCEPTION_TYPE, RowData[2]);  
+			    values.put(CALENDAR_DATES_SERVICE_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[0]));  
+			    values.put(CALENDAR_DATES_DATE, TrimWhiteSpacesOrDoubleQuotes(RowData[1]));  
+			    values.put(CALENDAR_DATES_EXCEPTION_TYPE, TrimWhiteSpacesOrDoubleQuotes(RowData[2]));  
 			    
 			    this.getWritableDatabase().insert(TABLE_CALENDAR_DATES, null, values); 
 			    
@@ -793,20 +873,23 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     		InputStream is = myContext.getAssets().open(myContext.getResources().getString(R.string.calendar_csv));
     		BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
     		
+    		// Skip first line
+    		br.readLine();
+    		
 			while ( (line = br.readLine()) != null ) {
 				
 			    String[] RowData = line.split(","); 
 			    ContentValues values = new ContentValues();  
-			    values.put(CALENDAR_SERVICE_ID, RowData[0]);  
-			    values.put(CALENDAR_MONDAY, RowData[1]);  
-			    values.put(CALENDAR_TUESDAY, RowData[2]);  
-			    values.put(CALENDAR_WEDNESDAY, RowData[3]);  
-			    values.put(CALENDAR_THURSDAY, RowData[4]);  
-			    values.put(CALENDAR_FRIDAY, RowData[5]);  
-			    values.put(CALENDAR_SATURDAY, RowData[6]);  
-			    values.put(CALENDAR_SUNDAY, RowData[7]);  
-			    values.put(CALENDAR_START_DATE, RowData[8]);  
-			    values.put(CALENDAR_END_DATE, RowData[9]);
+			    values.put(CALENDAR_SERVICE_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[0]));  
+			    values.put(CALENDAR_MONDAY, TrimWhiteSpacesOrDoubleQuotes(RowData[1]));  
+			    values.put(CALENDAR_TUESDAY, TrimWhiteSpacesOrDoubleQuotes(RowData[2]));  
+			    values.put(CALENDAR_WEDNESDAY, TrimWhiteSpacesOrDoubleQuotes(RowData[3]));  
+			    values.put(CALENDAR_THURSDAY, TrimWhiteSpacesOrDoubleQuotes(RowData[4]));  
+			    values.put(CALENDAR_FRIDAY, TrimWhiteSpacesOrDoubleQuotes(RowData[5]));  
+			    values.put(CALENDAR_SATURDAY, TrimWhiteSpacesOrDoubleQuotes(RowData[6]));  
+			    values.put(CALENDAR_SUNDAY, TrimWhiteSpacesOrDoubleQuotes(RowData[7]));  
+			    values.put(CALENDAR_START_DATE, TrimWhiteSpacesOrDoubleQuotes(RowData[8]));  
+			    values.put(CALENDAR_END_DATE, TrimWhiteSpacesOrDoubleQuotes(RowData[9]));
 			    
 			    this.getWritableDatabase().insert(TABLE_CALENDAR, null, values); 
 			    
@@ -833,16 +916,19 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     		InputStream is = myContext.getAssets().open(myContext.getResources().getString(R.string.fare_attributes_csv));
     		BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
     		
+    		// Skip first line
+    		br.readLine();
+    		
 			while ( (line = br.readLine()) != null ) {
 				
 			    String[] RowData = line.split(","); 
 			    ContentValues values = new ContentValues();  
-			    values.put(FARE_ATTRIBUTES_FARE_ID, RowData[0]);  
-			    values.put(FARE_ATTRIBUTES_PRICE, RowData[1]);  
-			    values.put(FARE_ATTRIBUTES_CURRENCY_TYPE, RowData[2]);  
-			    values.put(FARE_ATTRIBUTES_PAYMENT_METHOD, RowData[3]);  
-			    values.put(FARE_ATTRIBUTES_TRANSFERS, RowData[4]);  
-			    if (6 <= RowData.length) values.put(FARE_ATTRIBUTES_TRANSFER_DURATION, RowData[5]);
+			    values.put(FARE_ATTRIBUTES_FARE_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[0]));  
+			    values.put(FARE_ATTRIBUTES_PRICE, TrimWhiteSpacesOrDoubleQuotes(RowData[1]));  
+			    values.put(FARE_ATTRIBUTES_CURRENCY_TYPE, TrimWhiteSpacesOrDoubleQuotes(RowData[2]));  
+			    values.put(FARE_ATTRIBUTES_PAYMENT_METHOD, TrimWhiteSpacesOrDoubleQuotes(RowData[3]));  
+			    values.put(FARE_ATTRIBUTES_TRANSFERS, TrimWhiteSpacesOrDoubleQuotes(RowData[4]));  
+			    if (6 <= RowData.length) values.put(FARE_ATTRIBUTES_TRANSFER_DURATION, TrimWhiteSpacesOrDoubleQuotes(RowData[5]));
 			    else values.putNull(FARE_ATTRIBUTES_TRANSFER_DURATION);  
 			    
 			    this.getWritableDatabase().insert(TABLE_FARE_ATTRIBUTES, null, values); 
@@ -870,14 +956,17 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     		InputStream is = myContext.getAssets().open(myContext.getResources().getString(R.string.fare_rules_csv));
     		BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
     		
+    		// Skip first line
+    		br.readLine();
+    		
 			while ( (line = br.readLine()) != null ) {
 				    
 			    String[] RowData = line.split(","); 
 			    ContentValues values = new ContentValues();  
-			    values.put(FARE_RULES_FARE_ID, RowData[0]);  
-			    values.put(FARE_RULES_ROUTE_ID, RowData[1]);  
-			    values.put(FARE_RULES_ORIGIN_ID, RowData[2]);  
-			    values.put(FARE_RULES_DESTINATION_ID, RowData[3]);  
+			    values.put(FARE_RULES_FARE_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[0]));  
+			    values.put(FARE_RULES_ROUTE_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[1]));  
+			    values.put(FARE_RULES_ORIGIN_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[2]));  
+			    values.put(FARE_RULES_DESTINATION_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[3]));  
 			    
 			    this.getWritableDatabase().insert(TABLE_FARE_RULES, null, values); 
 			    
@@ -904,15 +993,18 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     		InputStream is = myContext.getAssets().open(myContext.getResources().getString(R.string.shapes_csv));
     		BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
     		
+    		// Skip first line
+    		br.readLine();
+    		
 			while ( (line = br.readLine()) != null ) {
 				
 			    String[] RowData = line.split(","); 
 			    ContentValues values = new ContentValues();  
-			    values.put(SHAPES_ID, RowData[0]);  
-			    values.put(SHAPES_PT_LAT, RowData[1]);  
-			    values.put(SHAPES_PT_LON, RowData[2]);  
-			    values.put(SHAPES_PT_SEQUENCE, RowData[3]);  
-			    if (5 <= RowData.length) values.put(SHAPES_DIST_TRAVELED, RowData[4]);  
+			    values.put(SHAPES_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[0]));  
+			    values.put(SHAPES_PT_LAT, TrimWhiteSpacesOrDoubleQuotes(RowData[1]));  
+			    values.put(SHAPES_PT_LON, TrimWhiteSpacesOrDoubleQuotes(RowData[2]));  
+			    values.put(SHAPES_PT_SEQUENCE, TrimWhiteSpacesOrDoubleQuotes(RowData[3]));  
+			    if (5 <= RowData.length) values.put(SHAPES_DIST_TRAVELED, TrimWhiteSpacesOrDoubleQuotes(RowData[4]));  
 			    else values.putNull(SHAPES_DIST_TRAVELED);  
 			    
 			    this.getWritableDatabase().insert(TABLE_SHAPES, null, values); 
@@ -940,17 +1032,21 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     		InputStream is = myContext.getAssets().open(myContext.getResources().getString(R.string.routes_csv));
     		BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
     		
+    		// Skip first line
+    		br.readLine();
+    		
 			while ( (line = br.readLine()) != null ) {
 				
 			    String[] RowData = line.split(",");  
 			    ContentValues values = new ContentValues();  
-			    values.put(ROUTES_ID, RowData[0]);  
-			    values.put(ROUTES_SHORT_NAME, RowData[1]);  
-			    values.put(ROUTES_LONG_NAME, RowData[2]);  
-			    values.put(ROUTES_DESC, RowData[3]);  
-			    values.put(ROUTES_TYPE, RowData[4]);  
-			    values.put(ROUTES_URL, RowData[5]);  
-			    if (7 <= RowData.length) values.put(ROUTES_COLOR, RowData[6]);  
+			    values.put(ROUTES_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[0]));  
+			    values.put(ROUTES_SHORT_NAME, TrimWhiteSpacesOrDoubleQuotes(RowData[1]));  
+			    values.put(ROUTES_LONG_NAME, TrimWhiteSpacesOrDoubleQuotes(RowData[2]));  
+			    values.put(ROUTES_DESC, TrimWhiteSpacesOrDoubleQuotes(RowData[3]));  
+			    values.put(ROUTES_TYPE, TrimWhiteSpacesOrDoubleQuotes(RowData[4])); 
+			    if (6 <= RowData.length) values.put(ROUTES_URL, TrimWhiteSpacesOrDoubleQuotes(RowData[5]));  
+			    else values.putNull(ROUTES_URL); 
+			    if (7 <= RowData.length) values.put(ROUTES_COLOR, TrimWhiteSpacesOrDoubleQuotes(RowData[6]));  
 			    else values.putNull(ROUTES_COLOR);  
 			    
 			    this.getWritableDatabase().insert(TABLE_ROUTES, null, values); 
@@ -979,25 +1075,30 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     		InputStream is = myContext.getAssets().open(myContext.getResources().getString(R.string.stops_csv));
     		BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
     		
+    		// Skip first line
+    		br.readLine();
+    		
 			while ( (line = br.readLine()) != null ) {
 				
 			    String[] RowData = line.split(",");  
 			    
-			    ContentValues values = new ContentValues();  
-			    values.put(STOPS_ID, RowData[0]);  
-			    values.put(STOPS_CODE, RowData[1]);  
-			    values.put(STOPS_NAME, RowData[2]);  
-			    values.put(STOPS_DESC, RowData[3]);  
-			    values.put(STOPS_LAT, Double.parseDouble(RowData[4]));  
-			    values.put(STOPS_LON, Double.parseDouble(RowData[5]));  
-			    values.put(STOPS_ZONE_ID, RowData[6]);  
-			    values.put(STOPS_URL, RowData[7]);  
-			    values.put(STOPS_LOC_TYPE, RowData[8]);  
-			    values.put(STOPS_PARENT_STATION, RowData[9]);  
-			    values.put(STOPS_PLATFORM_CODE, RowData[10]);  
+			 // If the platform code is empty, skip the whole line
+			    if (11 <= RowData.length) {
+				    ContentValues values = new ContentValues();  
+				    values.put(STOPS_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[0]));  
+				    values.put(STOPS_CODE, TrimWhiteSpacesOrDoubleQuotes(RowData[1]));  
+				    values.put(STOPS_NAME, TrimWhiteSpacesOrDoubleQuotes(RowData[2]));  
+				    values.put(STOPS_DESC, TrimWhiteSpacesOrDoubleQuotes(RowData[3]));  
+				    values.put(STOPS_LAT, Double.parseDouble(TrimWhiteSpacesOrDoubleQuotes(RowData[4])));  
+				    values.put(STOPS_LON, Double.parseDouble(TrimWhiteSpacesOrDoubleQuotes(RowData[5])));  
+				    values.put(STOPS_ZONE_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[6]));  
+				    values.put(STOPS_URL, TrimWhiteSpacesOrDoubleQuotes(RowData[7]));  
+				    values.put(STOPS_LOC_TYPE, TrimWhiteSpacesOrDoubleQuotes(RowData[8]));  
+				    values.put(STOPS_PARENT_STATION, TrimWhiteSpacesOrDoubleQuotes(RowData[9]));  
+			    	values.put(STOPS_PLATFORM_CODE, TrimWhiteSpacesOrDoubleQuotes(RowData[10]));  
 			    
-			    this.getWritableDatabase().insert(TABLE_STOPS, null, values); 
-			    
+			    	this.getWritableDatabase().insert(TABLE_STOPS, null, values); 
+			    }
 			}
 			
 			br.close();  
@@ -1022,17 +1123,20 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     		InputStream is = myContext.getAssets().open(myContext.getResources().getString(R.string.stop_times_csv));
     		BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
     		
+    		// Skip first line
+    		br.readLine();
+    		
 			while ( (line = br.readLine()) != null ) {
 				
 			    String[] RowData = line.split(",");
 			    ContentValues values = new ContentValues();  
-			    values.put(STOP_TIMES_TRIP_ID, RowData[0]);  
-			    values.put(STOP_TIMES_ARRIVAL_TIME, RowData[1]);  
-			    values.put(STOP_TIMES_DEPARTURE_TIME, RowData[2]);  
-			    values.put(this.STOP_TIMES_STOP_ID, RowData[3]);  
-			    values.put(STOP_TIMES_STOP_SEQUENCE, RowData[4]);  
-			    values.put(STOP_TIMES_PICKUP_TYPE, RowData[5]);  
-			    values.put(STOP_TIMES_DROPOFF_TYPE, RowData[6]);  
+			    values.put(STOP_TIMES_TRIP_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[0]));  
+			    values.put(STOP_TIMES_ARRIVAL_TIME, TrimWhiteSpacesOrDoubleQuotes(RowData[1]));  
+			    values.put(STOP_TIMES_DEPARTURE_TIME, TrimWhiteSpacesOrDoubleQuotes(RowData[2]));  
+			    values.put(STOP_TIMES_STOP_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[3]));  
+			    values.put(STOP_TIMES_STOP_SEQUENCE, TrimWhiteSpacesOrDoubleQuotes(RowData[4]));  
+			    values.put(STOP_TIMES_PICKUP_TYPE, TrimWhiteSpacesOrDoubleQuotes(RowData[5]));  
+			    values.put(STOP_TIMES_DROPOFF_TYPE, TrimWhiteSpacesOrDoubleQuotes(RowData[6]));  
 			    
 			    this.getWritableDatabase().insert(TABLE_STOP_TIMES, null, values); 
 			    
@@ -1059,18 +1163,21 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     		InputStream is = myContext.getAssets().open(myContext.getResources().getString(R.string.trips_csv));
     		BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
     		
+    		// Skip first line
+    		br.readLine();
+    		
 			while ( (line = br.readLine()) != null ) {
 				
 			    String[] RowData = line.split(",");  	    
 			    ContentValues values = new ContentValues();  
-			    values.put(TRIPS_ROUTE_ID, RowData[0]);  
-			    values.put(TRIPS_SERVICE_ID, RowData[1]);  
-			    values.put(TRIPS_TRIP_ID, RowData[2]);  
-			    values.put(TRIPS_HEAD_SIGN, RowData[3]);  
-			    values.put(TRIPS_SHORT_NAME, RowData[4]);  
-			    values.put(TRIPS_DIRECTION_ID, RowData[5]);  
-			    values.put(TRIPS_BLOCK_ID, RowData[6]);
-			    values.put(TRIPS_SHAPE_ID, RowData[7]);
+			    values.put(TRIPS_ROUTE_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[0]));  
+			    values.put(TRIPS_SERVICE_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[1]));  
+			    values.put(TRIPS_TRIP_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[2]));  
+			    values.put(TRIPS_HEAD_SIGN, TrimWhiteSpacesOrDoubleQuotes(RowData[3]));  
+			    values.put(TRIPS_SHORT_NAME, TrimWhiteSpacesOrDoubleQuotes(RowData[4]));  
+			    values.put(TRIPS_DIRECTION_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[5]));  
+			    values.put(TRIPS_BLOCK_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[6]));
+			    values.put(TRIPS_SHAPE_ID, TrimWhiteSpacesOrDoubleQuotes(RowData[7]));
 			    
 			    this.getWritableDatabase().insert(TABLE_TRIPS, null, values); 
 			    
@@ -1102,6 +1209,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 	    			|| (getTableCount(TABLE_CALENDAR) <= 0)
 	    			) {
 	    		// Configure data for the first time 
+	    		this.populateDataToAgencyTable();
 		    	this.populateDataToCalendarDatesTable();
 		    	this.populateDataToCalendarTable();
 		    	this.populateDataToFareAttributesTable();
@@ -1115,6 +1223,13 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	} catch (Exception e) {
     		e.printStackTrace();
     	}
+    }
+    
+    // 
+    // Remove any white space or double quotes at beginning and trailing of the input string
+    //
+    private String TrimWhiteSpacesOrDoubleQuotes(String str) {
+    	return str.trim().replaceAll("^\"|\"$", "").trim();
     }
 }
 

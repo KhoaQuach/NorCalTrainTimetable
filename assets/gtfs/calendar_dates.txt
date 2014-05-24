@@ -1,3 +1,4 @@
+service_id,date,exception_type
 CT-12OCT-Caltrain-Sunday-02,20140526,1
 CT-12OCT-Caltrain-Sunday-02,20140704,1
 CT-12OCT-Caltrain-Sunday-02,20140901,1

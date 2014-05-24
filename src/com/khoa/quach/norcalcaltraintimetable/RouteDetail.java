@@ -3,9 +3,9 @@ package com.khoa.quach.norcalcaltraintimetable;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import android.net.ParseException;
+
 public class RouteDetail {
-	
-	SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss");
 	
     String route_number;
     String route_depart;
@@ -27,16 +27,18 @@ public class RouteDetail {
     
     private void calculateAndSetDuration() {
     	
+    	SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss");
+    	
     	Date d1 = null;
         Date d2 = null;
 
         if ( this.route_arrive.isEmpty() || this.route_depart.isEmpty()) {
-        	this.route_duration = "00";
+        	this.route_duration = "0:00";
         	return;
         }
         
         try 
-        {
+        {	
             d1 = format.parse(this.route_arrive);
             d2 = format.parse(this.route_depart);
 
@@ -55,7 +57,7 @@ public class RouteDetail {
             	}
             } 
             else {
-            	this.route_duration = Long.toString(diffMinutes); 
+            	this.route_duration = "0:" + Long.toString(diffMinutes); 
             }
         }
         catch (Exception e) 
@@ -73,19 +75,45 @@ public class RouteDetail {
     }
      
     public String getRouteDepart(){
-        return this.route_depart;
+    	
+    	String departTime = "";
+    	
+    	 try {
+         	// Convert to 12 hour format
+         	SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+             Date depart = sdf.parse(this.route_depart);
+             departTime = new SimpleDateFormat("hh:mm a").format(depart);
+     	} catch (java.text.ParseException e) {
+ 			// TODO Auto-generated catch block
+ 			e.printStackTrace();
+ 		}
+    	 
+        return departTime;
     }
      
     public void setRouteDepart(String _route_depart){
         this.route_depart = _route_depart;
         
         if ( (!this.route_depart.isEmpty()) && (this.route_arrive != null) && (!this.route_arrive.isEmpty())) {
-        	calculateAndSetDuration();
+        	calculateAndSetDuration();	
         }
     }
      
     public String getRouteArrive(){
-        return this.route_arrive;
+    	
+    	String arriveTime = "";
+    	
+    	try {
+        	// Convert to 12 hour format
+        	SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+            Date arrive = sdf.parse(this.route_arrive);
+            arriveTime = new SimpleDateFormat("hh:mm a").format(arrive);
+    	} catch (java.text.ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	
+        return arriveTime;
     }
      
     public void setRouteArrive(String _route_arrive){

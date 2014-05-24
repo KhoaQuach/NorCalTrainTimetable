@@ -21,11 +21,19 @@
   		    android:onClick="onRadioScheduleButtonClicked"/>
     
     	<RadioButton
-  		    android:id="@+id/button_weekend"
+  		    android:id="@+id/button_saturday"
   		    android:layout_width="wrap_content"
   		    android:layout_height="wrap_content"
   		    android:layout_weight="1.0"
-  		    android:text="@string/radio_button_weekend_label"
+  		    android:text="@string/radio_button_saturday_label"
+  		    android:onClick="onRadioScheduleButtonClicked"/>
+    	
+    	<RadioButton
+  		    android:id="@+id/button_sunday"
+  		    android:layout_width="wrap_content"
+  		    android:layout_height="wrap_content"
+  		    android:layout_weight="1.0"
+  		    android:text="@string/radio_button_sunday_label"
   		    android:onClick="onRadioScheduleButtonClicked"/>
     
     </RadioGroup>
@@ -34,19 +42,27 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:weightSum="2" >
+        android:weightSum="100" >
         
 		<Spinner
 			android:id="@+id/source_station"
 	   		android:layout_width="0dp"
 	   		android:layout_height="wrap_content"
-	   		android:layout_weight="1.0"/>
+	   		android:layout_weight="49"/>
 	    
+		<Button
+		    android:id="@+id/button_reverse"
+    		android:layout_width="50dp"
+    		android:layout_height="40dp"
+    		android:layout_weight="2.0"
+    		android:text="@string/button_reverse_label"
+    		android:onClick="onButtonReverseClicked"/>/>
+	
 		<Spinner
 	   		android:id="@+id/destination_station"
 	   		android:layout_width="0dp"
 	   		android:layout_height="wrap_content"
-	   		android:layout_weight="1.0"/>
+	   		android:layout_weight="49"/>
 	
   	</LinearLayout>
 

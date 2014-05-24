@@ -1,3 +1,4 @@
+fare_id,route_id,origin_id,destination_id
 OW_1_20130616,Bu-120,1,1
 OW_2_20130616,Bu-120,1,2
 OW_3_20130616,Bu-120,1,3

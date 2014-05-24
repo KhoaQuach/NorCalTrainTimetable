@@ -28,12 +28,14 @@ public class MainTimetableActivity extends Activity {
 	List<String> m_stationNames;
     int m_current_source_position = 0;
     int m_current_destination_position = 0;
-    boolean m_isWeekdaySchedule = false;
+    
+    ScheduleEnum m_SelectedSchedule = ScheduleEnum.WEEKDAY;
  
-    private static final String PREFS_NAME = "NorCalCalTrainSchedules";
-    private static final String PREFS_WEEKDAY_SELECTION = "weekday_selection";
-    private static final String PREFS_WEEKEND_SELECTION = "weekend_selection";
-    private static final String PREFS_SOURCE_SELECTION = "source_selection";
+    private static final String PREFS_NAME 					= "NorCalCalTrainSchedules";
+    private static final String PREFS_WEEKDAY_SELECTION 	= "weekday_selection";
+    private static final String PREFS_SATURDAY_SELECTION 	= "saturday_selection";
+    private static final String PREFS_SUNDAY_SELECTION 		= "sunday_selection";
+    private static final String PREFS_SOURCE_SELECTION 		= "source_selection";
     private static final String PREFS_DESTINATION_SELECTION = "destination_selection";
     
 	@Override
@@ -67,18 +69,40 @@ public class MainTimetableActivity extends Activity {
 		// automatically handle clicks on the Home/Up button, so long
 		// as you specify a parent activity in AndroidManifest.xml.
 		int id = item.getItemId();
-		if (id == R.id.action_reverse) {
+		if (id == R.id.action_about) {
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
 	}
 
 	/*
+	 * Check event on reverse button, swap the source and destination stations,
+	 * and update the routes accordingly
+	 */
+	public void onButtonReverseClicked(View view) {
+		
+	    int tmp = m_current_source_position;
+	    m_current_source_position = m_current_destination_position;
+	    m_current_destination_position = tmp;
+	    
+	    Spinner source_spinner = (Spinner)this.findViewById(R.id.source_station);
+		if ( source_spinner != null ) source_spinner.setSelection(m_current_source_position);
+		
+		Spinner destination_spinner = (Spinner)this.findViewById(R.id.destination_station);
+		if ( destination_spinner != null ) destination_spinner.setSelection(m_current_destination_position);
+		
+	    // Update list routes
+	    populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_SelectedSchedule);
+	    
+	}
+	
+	/*
 	 * Check event on radio buttons and save the states accordingly
 	 */
 	public void onRadioScheduleButtonClicked(View view) {
 		
 	    boolean checked = ((RadioButton) view).isChecked();
+	    boolean updateUi = false;
 	    
 	    switch( view.getId() ) {
 	    
@@ -86,36 +110,66 @@ public class MainTimetableActivity extends Activity {
 	        
 	        	if (checked) {
 	        		
-	        		this.m_isWeekdaySchedule = true;
+	        		this.m_SelectedSchedule = ScheduleEnum.WEEKDAY;
 	        		
 	        		// Save states
 	        		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0); 
 	        		SharedPreferences.Editor editor = settings.edit();
 	        		editor.putBoolean(PREFS_WEEKDAY_SELECTION, checked); 
-	        		editor.putBoolean(PREFS_WEEKEND_SELECTION, false);
+	        		editor.putBoolean(PREFS_SATURDAY_SELECTION, false);
+	        		editor.putBoolean(PREFS_SUNDAY_SELECTION, false);
 	        		editor.commit();
-	        		
+	    
+	        		updateUi = true;
 	        	}
 	               
 	            break;
 	        
-	        case R.id.button_weekend:
+	        case R.id.button_saturday:
 	            
 	        	if (checked) {
 	        		
-	        		this.m_isWeekdaySchedule = false;
+	        		this.m_SelectedSchedule = ScheduleEnum.SATURDAY;
 	        		
 	        		// Save states
 	        		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0); 
 	        		SharedPreferences.Editor editor = settings.edit();
-	        		editor.putBoolean(PREFS_WEEKEND_SELECTION, checked); 
+	        		editor.putBoolean(PREFS_SATURDAY_SELECTION, checked); 
+	        		editor.putBoolean(PREFS_SUNDAY_SELECTION, false);
 	        		editor.putBoolean(PREFS_WEEKDAY_SELECTION, false);
 	        		editor.commit();
+	        		
+	        		updateUi = true;
+	    		}
+	    
+	            break;
+	            
+	        case R.id.button_sunday:
+	            
+	        	if (checked) {
+	        		
+	        		this.m_SelectedSchedule = ScheduleEnum.SUNDAY;
+	        		
+	        		// Save states
+	        		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0); 
+	        		SharedPreferences.Editor editor = settings.edit();
+	        		editor.putBoolean(PREFS_SUNDAY_SELECTION, checked); 
+	        		editor.putBoolean(PREFS_SATURDAY_SELECTION, checked); 
+	        		editor.putBoolean(PREFS_WEEKDAY_SELECTION, false);
+	        		editor.commit();
+	        		
+	        		updateUi = true;
 	    		}
 	    
 	            break;
 	            
 	    }
+	    
+	    if ( updateUi ) {
+	    	// Update list routes
+	    	populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_SelectedSchedule);
+	    }
+	    
 	}
 	
 	 /*
@@ -148,14 +202,14 @@ public class MainTimetableActivity extends Activity {
 		populateDataToRouteSelection();
 		
 		if (m_current_source_position != m_current_destination_position) {
-			populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_isWeekdaySchedule);
+			populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_SelectedSchedule);
 		}
 	}
 
 	/*
 	 * Build the list of detail route info and bind them to the list view
 	 */
-	private void populateDataToRouteDetailList(int source_position, int destination_position, boolean isWeekdaySchedule) {
+	private void populateDataToRouteDetailList(int source_position, int destination_position, ScheduleEnum selectedSchedule) {
 	
         try
         {
@@ -174,7 +228,7 @@ public class MainTimetableActivity extends Activity {
         	
         	if ( source_position != destination_position ) {
         		// Get routes info from database
-        		routes = m_caltrainDb.getRouteDetails(source_station_name, destination_station_name, direction, isWeekdaySchedule);
+        		routes = m_caltrainDb.getRouteDetails(source_station_name, destination_station_name, direction, selectedSchedule);
         	}
         	
         	// Bind data to the interface
@@ -182,7 +236,8 @@ public class MainTimetableActivity extends Activity {
         	routeDetailList.setAdapter(arrayAdapter);
         	
         	// Update to visible position that close to current time
-        	SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss");
+        	SimpleDateFormat departFormat = new SimpleDateFormat("hh:mm a");
+        	SimpleDateFormat nowFormat = new SimpleDateFormat("HH:mm:ss");
         	
         	Date depart = null;
             Date now = new Date();
@@ -190,13 +245,13 @@ public class MainTimetableActivity extends Activity {
             final Calendar c = Calendar.getInstance(TimeZone.getDefault());
             
             String current_time = c.get(Calendar.HOUR_OF_DAY) + ":" + c.get(Calendar.MINUTE) + ":" + c.get(Calendar.SECOND);
-            now = format.parse(current_time);
+            now = nowFormat.parse(current_time);
             
             int position = 0;
         	
         	for (RouteDetail r: routes) {
         		
-        		depart = format.parse(r.getRouteDepart());
+        		depart = departFormat.parse(r.getRouteDepart());
         		
         		if ( (60*1000*30) <= (depart.getTime() - now.getTime()) ) {
         			routeDetailList.setSelection(position);
@@ -228,21 +283,25 @@ public class MainTimetableActivity extends Activity {
 		
 		if ( settings.contains(PREFS_WEEKDAY_SELECTION)) {
 			
-			m_isWeekdaySchedule = settings.getBoolean(PREFS_WEEKDAY_SELECTION, false);
+			m_SelectedSchedule= ScheduleEnum.WEEKDAY;
 			RadioButton btn = (RadioButton)this.findViewById(R.id.button_weekday);
-			if ( btn != null ) btn.setChecked(m_isWeekdaySchedule);
+			if ( btn != null ) btn.setChecked(true);
 		}
 		
-		if ( settings.contains(PREFS_WEEKEND_SELECTION) ) {
+		if ( settings.contains(PREFS_SATURDAY_SELECTION) ) {
 			
-			boolean button_weekend_setting = settings.getBoolean(PREFS_WEEKEND_SELECTION, false);
-			RadioButton btn = (RadioButton)this.findViewById(R.id.button_weekend);
-			if ( btn != null ) btn.setChecked(button_weekend_setting);
-			if (button_weekend_setting) m_isWeekdaySchedule = false;
-			else m_isWeekdaySchedule = true;
-			
+			m_SelectedSchedule= ScheduleEnum.SATURDAY;
+			RadioButton btn = (RadioButton)this.findViewById(R.id.button_saturday);
+			if ( btn != null ) btn.setChecked(true);
 		}
 		
+		if ( settings.contains(PREFS_SUNDAY_SELECTION) ) {
+			
+			m_SelectedSchedule= ScheduleEnum.SUNDAY;
+			RadioButton btn = (RadioButton)this.findViewById(R.id.button_sunday);
+			if ( btn != null ) btn.setChecked(true);
+		}
+
 		if ( settings.contains(PREFS_SOURCE_SELECTION)) {
 			
 			m_current_source_position = settings.getInt(PREFS_SOURCE_SELECTION, 0);
@@ -281,7 +340,7 @@ public class MainTimetableActivity extends Activity {
         		
         		if (m_current_source_position != m_current_destination_position) {
         			// Re-fresh data in the route list view
-        			populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_isWeekdaySchedule);
+        			populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_SelectedSchedule);
         		}
 			}
 		          
@@ -306,7 +365,7 @@ public class MainTimetableActivity extends Activity {
         		
         		if ( m_current_source_position != m_current_destination_position ) {
         			// Re-fresh data in the route list view
-        			populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_isWeekdaySchedule);
+        			populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_SelectedSchedule);
         		}
 			}
 		          
