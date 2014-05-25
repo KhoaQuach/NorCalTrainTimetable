@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">NorCal Caltrain Schedule</string>
+    <string name="author">Khoa Quach</string>
+    <string name="author_url">http://github.com/KhoaQuach</string>
+    <string name="app_name">Caltrain Schedule</string>
     <string name="action_about">About</string>
     <string name="button_reverse_label">&#60;-&#62;</string>
     <string name="station_from_label">From</string>
@@ -19,5 +21,6 @@
 	<string name="fare_rules_csv">gtfs/fare_rules.txt</string>
 	<string name="shapes_csv">gtfs/shapes.txt</string>
 	<string name="agency_csv">gtfs/agency.txt</string>
+	<string name="caltrain_db">database/Caltrain_GTFS</string>
 	
 </resources>

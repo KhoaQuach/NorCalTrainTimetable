@@ -11,7 +11,9 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:gravity="left"
-        android:text="Route#" />
+        android:text="Route" 
+        android:paddingTop="4dip"
+        android:paddingBottom="4dip"/>
 
     <TextView
         android:id="@+id/route_depart"
@@ -19,7 +21,9 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:gravity="left"
-        android:text="Depart" />
+        android:text="Depart" 
+        android:paddingTop="4dip"
+        android:paddingBottom="4dip"/>
 
     <TextView
         android:id="@+id/route_arrive"
@@ -27,7 +31,9 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:gravity="left"
-        android:text="Arrive" />
+        android:text="Arrive" 
+        android:paddingTop="4dip"
+        android:paddingBottom="4dip"/>
 
     <TextView
         android:id="@+id/route_duration"
@@ -35,6 +41,8 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:gravity="left"
-        android:text="Duration" />
+        android:text="Duration" 
+        android:paddingTop="4dip"
+        android:paddingBottom="4dip"/>
 
 </LinearLayout>

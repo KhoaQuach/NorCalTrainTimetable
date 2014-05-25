@@ -27,9 +27,10 @@ public class RouteDetailInfoAdapter extends ArrayAdapter<RouteDetail> {
     public View getView(int position, View convertView, ViewGroup parent)
     {
         LinearLayout routeDetailView;
+        String route_name = "";
         
         RouteDetail routeDetail = getItem(position);
-         
+        
         //Inflate the view
         if( convertView == null ) {
             routeDetailView = new LinearLayout(getContext());
@@ -52,6 +53,17 @@ public class RouteDetailInfoAdapter extends ArrayAdapter<RouteDetail> {
         routeArriveText.setText(routeDetail.getRouteArrive());
         routeDurationText.setText(routeDetail.getRouteDuration());
          
+        route_name = routeDetail.getRouteName();
+        
+        // Set different background color
+        if (route_name.equals("Bullet")) {
+        	routeDetailView.setBackgroundColor(android.graphics.Color.GREEN);
+        } else if (route_name.equals("Limited")) {
+        	routeDetailView.setBackgroundColor(android.graphics.Color.CYAN);
+        } else {
+        	routeDetailView.setBackgroundColor(android.graphics.Color.WHITE);
+        }
+        
         return routeDetailView;
     }
  

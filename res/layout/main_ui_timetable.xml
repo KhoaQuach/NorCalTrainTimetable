@@ -74,7 +74,8 @@
         
 		<TextView
 			android:id="@+id/route_number_label"
-			android:text="Route#"
+			android:text="Route"
+			android:textStyle="bold"
 	   		android:layout_width="0dp"
 	   		android:layout_height="wrap_content"
 	   		android:gravity="left"
@@ -83,6 +84,7 @@
 		<TextView
 	   		android:id="@+id/route_depart_label"
 	   		android:text="Depart"
+	   		android:textStyle="bold"
 	   		android:layout_width="0dp"
 	   		android:layout_height="wrap_content"
 	   		android:gravity="left"
@@ -91,6 +93,7 @@
 		<TextView
 	   		android:id="@+id/route_arrive_label"
 	   		android:text="Arrive"
+	   		android:textStyle="bold"
 	   		android:layout_width="0dp"
 	   		android:layout_height="wrap_content"
 	   		android:gravity="left"
@@ -99,6 +102,7 @@
 		<TextView
 	   		android:id="@+id/route_duration_label"
 	   		android:text="Duration"
+	   		android:textStyle="bold"
 	   		android:layout_width="0dp"
 	   		android:layout_height="wrap_content"
 	   		android:gravity="left"
@@ -109,7 +113,10 @@
     <ListView
         android:id="@+id/route_info_list"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" >
-    </ListView>
+        android:layout_height="wrap_content" 
+        android:divider="#000000"
+        android:dividerHeight="2dip"
+		android:paddingTop="2dip"
+		android:paddingBottom="10dip"/>
     
 </LinearLayout>

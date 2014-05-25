@@ -5,14 +5,14 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.TimeZone;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.AlertDialog.Builder;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
 import android.os.Bundle;
-import android.text.format.Time;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -70,6 +70,9 @@ public class MainTimetableActivity extends Activity {
 		// as you specify a parent activity in AndroidManifest.xml.
 		int id = item.getItemId();
 		if (id == R.id.action_about) {
+			
+			showAboutDialog();
+			
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
@@ -154,7 +157,7 @@ public class MainTimetableActivity extends Activity {
 	        		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0); 
 	        		SharedPreferences.Editor editor = settings.edit();
 	        		editor.putBoolean(PREFS_SUNDAY_SELECTION, checked); 
-	        		editor.putBoolean(PREFS_SATURDAY_SELECTION, checked); 
+	        		editor.putBoolean(PREFS_SATURDAY_SELECTION, false); 
 	        		editor.putBoolean(PREFS_WEEKDAY_SELECTION, false);
 	        		editor.commit();
 	        		
@@ -238,7 +241,7 @@ public class MainTimetableActivity extends Activity {
         	// Update to visible position that close to current time
         	SimpleDateFormat departFormat = new SimpleDateFormat("hh:mm a");
         	SimpleDateFormat nowFormat = new SimpleDateFormat("HH:mm:ss");
-        	
+
         	Date depart = null;
             Date now = new Date();
             
@@ -283,23 +286,32 @@ public class MainTimetableActivity extends Activity {
 		
 		if ( settings.contains(PREFS_WEEKDAY_SELECTION)) {
 			
-			m_SelectedSchedule= ScheduleEnum.WEEKDAY;
-			RadioButton btn = (RadioButton)this.findViewById(R.id.button_weekday);
-			if ( btn != null ) btn.setChecked(true);
+			boolean check = settings.getBoolean(PREFS_WEEKDAY_SELECTION, false);
+			if (check) {
+				m_SelectedSchedule = ScheduleEnum.WEEKDAY;
+				RadioButton btn = (RadioButton)this.findViewById(R.id.button_weekday);
+				if ( btn != null ) btn.setChecked(true);
+			}
 		}
 		
 		if ( settings.contains(PREFS_SATURDAY_SELECTION) ) {
 			
-			m_SelectedSchedule= ScheduleEnum.SATURDAY;
-			RadioButton btn = (RadioButton)this.findViewById(R.id.button_saturday);
-			if ( btn != null ) btn.setChecked(true);
+			boolean check = settings.getBoolean(PREFS_SATURDAY_SELECTION, false);
+			if (check) {
+				m_SelectedSchedule = ScheduleEnum.SATURDAY;
+				RadioButton btn = (RadioButton)this.findViewById(R.id.button_saturday);
+				if ( btn != null ) btn.setChecked(true);
+			}
 		}
 		
 		if ( settings.contains(PREFS_SUNDAY_SELECTION) ) {
 			
-			m_SelectedSchedule= ScheduleEnum.SUNDAY;
-			RadioButton btn = (RadioButton)this.findViewById(R.id.button_sunday);
-			if ( btn != null ) btn.setChecked(true);
+			boolean check = settings.getBoolean(PREFS_SUNDAY_SELECTION, false);
+			if (check) {
+				m_SelectedSchedule = ScheduleEnum.SUNDAY;
+				RadioButton btn = (RadioButton)this.findViewById(R.id.button_sunday);
+				if ( btn != null ) btn.setChecked(true);
+			}
 		}
 
 		if ( settings.contains(PREFS_SOURCE_SELECTION)) {
@@ -386,12 +398,12 @@ public class MainTimetableActivity extends Activity {
 			m_stationNames = m_caltrainDb.getAllStopNames();
 			
 			Spinner source_spinner = (Spinner) findViewById(R.id.source_station);
-			ArrayAdapter<String> source_adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, m_stationNames);
+			ArrayAdapter<String> source_adapter = new ArrayAdapter<String>(this, R.layout.spinner_station_item, m_stationNames);
 			source_adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 			source_spinner.setAdapter(source_adapter);
 			
 			Spinner destination_spinner = (Spinner) findViewById(R.id.destination_station);
-			ArrayAdapter<String> destination_adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, m_stationNames);
+			ArrayAdapter<String> destination_adapter = new ArrayAdapter<String>(this, R.layout.spinner_station_item, m_stationNames);
 			destination_adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 			destination_spinner.setAdapter(destination_adapter);
 			
@@ -399,6 +411,28 @@ public class MainTimetableActivity extends Activity {
 			exceptionMessage("Failed to load last run settings", e);
 			e.printStackTrace();
 		}
+	}
+	
+	/*
+	 * Show the about dialog when selected from menu 
+	 */
+	private void showAboutDialog() {
+		
+		try {
+			PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+			Calendar c = Calendar.getInstance(); 
+			
+			String message = String.format("Version %s\n@%d %s\n%s", 
+					pInfo.versionName, 
+					c.get(Calendar.YEAR), 
+					getString(R.string.author), 
+					getString(R.string.author_url));
+			Builder about = new AlertDialog.Builder(this);
+	        about.setTitle(R.string.app_name);
+	        about.setMessage(message);
+	        about.setPositiveButton("OK", null);
+	        about.show();
+		} catch(Exception e) {}
 	}
 	
 }

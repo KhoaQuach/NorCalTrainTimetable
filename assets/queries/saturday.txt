@@ -1,4 +1,4 @@
-select s.stop_name, t.trip_short_name, st.arrival_time
+select s.stop_name, t.trip_short_name, st.arrival_time, r.route_long_name
 from calendar c
 join trips as  t on t.service_id = c.service_id
 join routes as r on r.route_id = t.route_id

@@ -1,10 +1,12 @@
 package com.khoa.quach.norcalcaltraintimetable;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -12,15 +14,13 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Locale;
 
-import android.app.AlertDialog;
-import android.app.ProgressDialog;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.text.format.DateFormat;
  
 public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 
@@ -33,6 +33,11 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     // Database Name
     private static final String DATABASE_NAME = "Caltrain_GTFS";
  
+    private static File DATABASE_FILE;
+ 
+    private boolean m_InvalidDatabaseFile = false;
+	private boolean m_IsUpgraded = false;
+	
     //
     // All the table names
     //
@@ -163,23 +168,44 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     public CalTrainDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
         myContext = context;
+        
+        SQLiteDatabase db = null;
+		try {
+			db = getReadableDatabase();
+			if (db != null) {
+		  		db.close();
+			}
+		
+			DATABASE_FILE = context.getDatabasePath(DATABASE_NAME);
+		
+			if (m_InvalidDatabaseFile) {
+				copyDatabase();
+			}
+			if (m_IsUpgraded) {
+				doUpgrade();
+			}
+		} catch (SQLiteException e) {
+		} finally {
+			if (db != null && db.isOpen()) {
+				db.close();
+			}
+		}
     }
  
     // Creating Tables
     @Override
     public void onCreate(SQLiteDatabase db) {
     	
-    	// Create tables
-    	createAgencyTable(db);
-    	createCalendarDatesTable(db);
-    	createCalendarTable(db);
-    	createFareAttributesTable(db);
-    	createFareRulesTable(db);
-    	createShapesTable(db);
-    	createRoutesTable(db);
-    	createStopsTable(db);
-    	createStopTimesTable(db);
-    	createTripsTable(db);
+    	m_InvalidDatabaseFile = true;
+    	
+    	// I deploy the database with the program now, so we will not do following tasks anymore
+    	// IMPORTANT: we we get the new gtfs files, then set above flag to false and set this
+    	//            condition to true so the program would parse text file and build new database,
+    	//            that new-built database would then need to copy to assests/database directory
+    	if ( false ) {
+	    	// Create tables
+    		createTables(db);
+    	}
     	
     }
  
@@ -187,19 +213,19 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
     	
+    	m_InvalidDatabaseFile = true;
+    	m_IsUpgraded = true;
+    	
     	try {
     		
-    		// Drop older table if existed
-    		db.execSQL("DROP TABLE IF EXISTS " + TABLE_AGENCY);
-    		db.execSQL("DROP TABLE IF EXISTS " + TABLE_CALENDAR_DATES);
-    		db.execSQL("DROP TABLE IF EXISTS " + TABLE_CALENDAR);
-    		db.execSQL("DROP TABLE IF EXISTS " + TABLE_FARE_ATTRIBUTES);
-    		db.execSQL("DROP TABLE IF EXISTS " + TABLE_FARE_RULES);
-    		db.execSQL("DROP TABLE IF EXISTS " + TABLE_SHAPES);
-    		db.execSQL("DROP TABLE IF EXISTS " + TABLE_STOPS);
-    		db.execSQL("DROP TABLE IF EXISTS " + TABLE_STOP_TIMES);
-    		db.execSQL("DROP TABLE IF EXISTS " + TABLE_ROUTES);
-    		db.execSQL("DROP TABLE IF EXISTS " + TABLE_TRIPS);
+    		// I deploy the database with the program now, so we will not do following tasks anymore
+        	// IMPORTANT: we we get the new gtfs files, then set above flag to false and set this
+        	//            condition to true so the program would parse text file and build new database,
+        	//            that new-built database would then need to copy to assests/database directory
+        	if ( false ) {
+	    		// Drop older table if existed
+        		dropAllTables(db);
+        	}
     		
     	} catch(Exception e)
     	{
@@ -239,6 +265,56 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	return queryStatement;
     }
     
+    /*
+     * Copy the deployed database to intended destination
+     */
+    private void copyDatabase() {
+		AssetManager assetManager = myContext.getResources().getAssets();
+		InputStream in = null;
+		OutputStream out = null;
+		
+		try {
+			
+			String inputFile = myContext.getResources().getString(R.string.caltrain_db);
+			in = assetManager.open(inputFile);
+			out = new FileOutputStream(DATABASE_FILE);
+			byte[] buffer = new byte[1024];
+			int read = 0;
+			while ((read = in.read(buffer)) != -1) {
+				out.write(buffer, 0, read);
+			}
+		} catch (IOException e) {
+		} finally {
+			if (in != null) {
+				try {
+					in.close();
+				} catch (IOException e) {}
+			}
+			if (out != null) {
+				try {
+					out.close();
+				} catch (IOException e) {}
+			}
+		}
+		setDatabaseVersion();
+		m_InvalidDatabaseFile = false;
+	}
+    
+    /*
+     * Create all tables
+     */
+    private void createTables(SQLiteDatabase db) {
+    	createAgencyTable(db);
+    	createCalendarDatesTable(db);
+    	createCalendarTable(db);
+    	createFareAttributesTable(db);
+    	createFareRulesTable(db);
+    	createShapesTable(db);
+    	createRoutesTable(db);
+    	createStopsTable(db);
+    	createStopTimesTable(db);
+    	createTripsTable(db);
+    }
     /*
      * Create agency table
      */
@@ -448,6 +524,43 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
    
     }
     
+    /**
+	 * called if a database upgrade is needed
+	 */
+	private void doUpgrade() {
+		copyDatabase();
+	}
+	
+	/*
+	 * Drop all tables
+	 */
+	private void dropAllTables(SQLiteDatabase db) {
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_AGENCY);
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_CALENDAR_DATES);
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_CALENDAR);
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_FARE_ATTRIBUTES);
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_FARE_RULES);
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_SHAPES);
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_STOPS);
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_STOP_TIMES);
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_ROUTES);
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_TRIPS);
+	}
+	
+	private void setDatabaseVersion() {
+		SQLiteDatabase db = null;
+		try {
+			db = SQLiteDatabase.openDatabase(DATABASE_FILE.getAbsolutePath(), null,
+				SQLiteDatabase.OPEN_READWRITE);
+			db.execSQL("PRAGMA user_version = " + DATABASE_VERSION);
+		} catch (SQLiteException e ) {
+		} finally {
+			if (db != null && db.isOpen()) {
+		  		db.close();
+			}
+		}
+	}
+	
     /*
      * Getting single stop station info by station id
      */
@@ -668,19 +781,10 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     public ArrayList<RouteDetail> getRouteDetails(String source_station_name, String destination_station_name, String direction, ScheduleEnum selectedSchedule) throws Exception {
     
     	ArrayList<RouteDetail> detailList = new ArrayList<RouteDetail>();
-    	String route_number = "";
+    	String route_number = "", route_name = "";
     	
     	// Populate data if they're not there
-    	this.populateDataToAgencyTable();
-    	this.populateDataToCalendarDatesTable();
-    	this.populateDataToCalendarTable();
-    	this.populateDataToFareAttributesTable();
-    	this.populateDataToFareRulesTable();
-    	this.populateDataToShapesTable();
-    	this.populateDataToRoutesTable();
-    	this.populateDataToStopsTable();
-    	this.populateDataToStopTimesTable();
-    	this.populateDataToTripsTable();
+    	populateAllDataToTables();
     	
     	//String selectQuery = "SELECT 2, '08:56', '09:45', '50', '3.50'";
     	String selectQuery = BuildQueryStatement(source_station_name, destination_station_name, direction, selectedSchedule);
@@ -711,6 +815,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			    		route_number = cursor.getString(1).trim();
 			    		newRouteDetail.setRouteNumber(route_number);
 			    		newRouteDetail.setRouteDepart(cursor.getString(2).trim());
+			    		newRouteDetail.setRouteName(cursor.getString(3).trim());
 			    		
 			    		// Save it in a temporary hashtable object
 			    		routeTempDetail.put(route_number, newRouteDetail);
@@ -723,9 +828,10 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			    		// based on the route number from the hashable list
 			    		//
 			    		route_number = cursor.getString(1).trim();
+			    		route_name = cursor.getString(3).trim();
 			    		newRouteDetail = routeTempDetail.get(route_number);
 			    		
-			    		if ( newRouteDetail != null ) {
+			    		if ( (newRouteDetail != null) && (route_name.equals(newRouteDetail.getRouteName()))) {
 			    			newRouteDetail.setRouteArrive(cursor.getString(2).trim());
 			    			detailList.add(newRouteDetail);
 			    		}
@@ -785,6 +891,13 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     		return false;
     	}
         return false;
+    }
+    
+    /*
+     * Parse and insert data to all tables
+     */
+    private void populateAllDataToTables() {
+    	
     }
     
     /*
@@ -1208,17 +1321,9 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 	    			|| (getTableCount(TABLE_CALENDAR_DATES) <= 0)
 	    			|| (getTableCount(TABLE_CALENDAR) <= 0)
 	    			) {
+	    		
 	    		// Configure data for the first time 
-	    		this.populateDataToAgencyTable();
-		    	this.populateDataToCalendarDatesTable();
-		    	this.populateDataToCalendarTable();
-		    	this.populateDataToFareAttributesTable();
-		    	this.populateDataToFareRulesTable();
-		    	this.populateDataToShapesTable();
-		    	this.populateDataToRoutesTable();
-		    	this.populateDataToStopsTable();
-		    	this.populateDataToStopTimesTable();
-		    	this.populateDataToTripsTable();
+	    		populateAllDataToTables();	
 	    	}
     	} catch (Exception e) {
     		e.printStackTrace();
