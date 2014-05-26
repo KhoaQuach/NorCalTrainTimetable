@@ -1,11 +1,26 @@
 package com.khoa.quach.norcalcaltraintimetable;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.StringReader;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.concurrent.ExecutionException;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+import org.xmlpull.v1.XmlPullParserFactory;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -13,6 +28,7 @@ import android.app.AlertDialog.Builder;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.os.Bundle;
+import android.text.Html;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -28,6 +44,7 @@ public class MainTimetableActivity extends Activity {
 	List<String> m_stationNames;
     int m_current_source_position = 0;
     int m_current_destination_position = 0;
+    String m_direction;
     
     ScheduleEnum m_SelectedSchedule = ScheduleEnum.WEEKDAY;
  
@@ -62,14 +79,26 @@ public class MainTimetableActivity extends Activity {
 		getMenuInflater().inflate(R.menu.main_timetable, menu);
 		return true;
 	}
-
+	
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		// Handle action bar item clicks here. The action bar will
 		// automatically handle clicks on the Home/Up button, so long
 		// as you specify a parent activity in AndroidManifest.xml.
 		int id = item.getItemId();
-		if (id == R.id.action_about) {
+		if (id == R.id.action_detail) {
+			
+			showRouteDetailDialog();
+			
+			return true;
+		}
+		if (id == R.id.action_help) {
+			
+			showHelpDialog();
+			
+			return true;
+		}
+		else if (id == R.id.action_about) {
 			
 			showAboutDialog();
 			
@@ -198,6 +227,132 @@ public class MainTimetableActivity extends Activity {
 	}
 	
 	/*
+	 * Send a web request to get real-time times status on a station
+	 */
+	private String getRealTimeStatus(String station_name, String direction) {
+		String status = "";
+		String url = "";
+		StringBuilder builder = new StringBuilder();
+		
+		try {
+			url = "http://services.my511.org/Transit2.0/GetNextDeparturesByStopName.aspx?token=86666b21-c313-4c78-8690-44a1cb06d34e&agencyName=Caltrain&stopName=" +
+					URLEncoder.encode(station_name, "UTF-8") + "+Station";
+		} catch (UnsupportedEncodingException e) {}
+		
+		GetRouteDetailClient getDetail = new GetRouteDetailClient(this);
+		getDetail.execute(url);
+		
+		try {
+			HttpResponse response = getDetail.get();
+			StatusLine statusLine = response.getStatusLine();
+            int statusCode = statusLine.getStatusCode();
+            if (statusCode == 200) {
+                    HttpEntity entity = response.getEntity();
+                    InputStream content = entity.getContent();
+                    BufferedReader reader = new BufferedReader(
+                                    new InputStreamReader(content));
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                            builder.append(line);
+                    }
+                    status = parseRouteDetailXmlResponse(builder.toString(), direction);
+            } 
+		} catch (InterruptedException e) {
+			status = e.getLocalizedMessage();
+		} catch (ExecutionException e) {
+			status = e.getLocalizedMessage();
+		} catch (IllegalStateException e) {
+			status = e.getLocalizedMessage();
+		} catch (IOException e) {
+			status = e.getLocalizedMessage();
+		}
+		
+		if ( status == null || status.equals("")) {
+			status = "Encountered error getting real-time status!";
+		}
+		
+		return status;
+	}
+	
+	/*
+	 * Parse the route detail xml response 
+	 */
+	private String parseRouteDetailXmlResponse(String xmlResponse, String direction) {
+		
+		StringBuilder response = new StringBuilder();
+		XmlPullParserFactory factory;
+		String route_name = "", stop_name = "", depart_time = "", status = "";
+		String search_direction = direction.equals("SB")?"SOUTHBOUND":"NORTHBOUND";
+		boolean skip = false, hasData = false;
+		
+		try {
+			
+			factory = XmlPullParserFactory.newInstance();
+			XmlPullParser parser = factory.newPullParser();
+			
+			parser.setInput(new StringReader (xmlResponse));
+			int eventType = parser.getEventType();
+		    String tagName = "";
+		   
+		    try {       
+		        while (eventType != XmlPullParser.END_DOCUMENT) {
+		        	
+		        	tagName = parser.getName();
+		        	
+		        	if ( tagName != null && eventType == XmlPullParser.START_TAG) {
+		        		
+			            if(tagName.equalsIgnoreCase("Route")) {
+			            	route_name = parser.getAttributeValue(null, "Name");
+			                if (route_name.contains(search_direction)) {
+			                	skip = false;
+			                } else {
+			                	skip = true;
+			                }
+			            } else if(tagName.equalsIgnoreCase("Stop")) {
+			            	if (!skip) {
+			            		stop_name = parser.getAttributeValue(null, "name");
+			            		response.append(stop_name);
+			            		response.append("\n");
+			            	}
+			            }      
+			            else if (tagName.equalsIgnoreCase("DepartureTime")) {
+			            	if (!skip) {
+			            		depart_time = parser.getText();
+			            		if ( depart_time != null && !depart_time.equals("")) {
+			            			
+			            			// At least we have a depart time
+			            			hasData = true;
+			            			
+			            			response.append("Depart time: ");
+			            			response.append(depart_time);
+			            			response.append("\n");
+			            		}
+			            	}
+			            }
+			            
+		            }
+		            
+		        	eventType = parser.next();    
+		        }       
+		    } catch (Exception e) {
+		    	e.printStackTrace();
+		    }
+			
+		} catch (XmlPullParserException e) {
+			e.printStackTrace();
+		}
+		
+		if ( !hasData ) {
+			status = "";
+		}
+		else {
+			status = response.toString();
+		}
+		
+		return status;
+	}
+	
+	/*
 	 * Getting data from database and populate them into UI
 	 */
 	private void populateDataToDisplay() {
@@ -217,7 +372,7 @@ public class MainTimetableActivity extends Activity {
         try
         {
         	// Set direction
-        	String direction = source_position>destination_position?"NB":"SB";
+        	m_direction = source_position>destination_position?"NB":"SB";
         	
         	// Get the selected destination names
         	String source_station_name = m_stationNames.get(source_position);
@@ -227,11 +382,10 @@ public class MainTimetableActivity extends Activity {
         	routeDetailList.setSelection(0);
         	
         	ArrayList<RouteDetail> routes = new ArrayList<RouteDetail>();
-        	//routes.add(new RouteDetail("1", "07:10:00", "08:00:00", "50", "4.0"));
         	
         	if ( source_position != destination_position ) {
         		// Get routes info from database
-        		routes = m_caltrainDb.getRouteDetails(source_station_name, destination_station_name, direction, selectedSchedule);
+        		routes = m_caltrainDb.getRouteDetails(source_station_name, destination_station_name, m_direction, selectedSchedule);
         	}
         	
         	// Bind data to the interface
@@ -414,6 +568,22 @@ public class MainTimetableActivity extends Activity {
 	}
 	
 	/*
+	 * Show the help dialog when selected from menu 
+	 */
+	private void showHelpDialog() {
+		
+		try {
+			Builder help = new AlertDialog.Builder(this);
+	        help.setTitle(R.string.app_name);
+	        help.setMessage(Html.fromHtml("<font color='#00FF00'><b>Green item:</b></font>" 
+	        		+ " bullet train. <br> <font color='#00FFFF'><b>Cyan item:</b></font> " 
+	        		+ " limited train. <br> Everything else is normal local train"));
+	        help.setPositiveButton("OK", null);
+	        help.show();
+		} catch(Exception e) {}
+	}
+	
+	/*
 	 * Show the about dialog when selected from menu 
 	 */
 	private void showAboutDialog() {
@@ -422,13 +592,53 @@ public class MainTimetableActivity extends Activity {
 			PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
 			Calendar c = Calendar.getInstance(); 
 			
-			String message = String.format("Version %s\n@%d %s\n%s", 
+			String message = String.format("Version %s\n@2014 - %d %s\n%s", 
 					pInfo.versionName, 
 					c.get(Calendar.YEAR), 
 					getString(R.string.author), 
 					getString(R.string.author_url));
 			Builder about = new AlertDialog.Builder(this);
 	        about.setTitle(R.string.app_name);
+	        about.setMessage(message);
+	        about.setPositiveButton("OK", null);
+	        about.show();
+		} catch(Exception e) {}
+	}
+	
+	
+	/*
+	 * Gather route detail information and display them in this dialog
+	 */
+	private void showRouteDetailDialog() {
+		
+		String fare = "";
+		
+		String source_station = this.m_stationNames.get(this.m_current_source_position);
+		String destination_station = this.m_stationNames.get(this.m_current_destination_position);
+		
+		try {
+			
+			// Get fare
+			ArrayList<String> stationDetails = m_caltrainDb.getStationDetails(source_station, destination_station, m_direction);
+			
+			fare = stationDetails.get(0);
+			
+			// Build message with real-time traffic
+			String message = String.format(
+					"%s to %s\n\n" +
+					"Fare: $%s\n\n" +
+					"Real-time departing times at %s station:\n %s\n\n" +
+					"Real-time arriving times at %s station:\n %s\n\n", 
+				source_station,
+				destination_station,
+				fare,
+				source_station,
+				getRealTimeStatus(source_station, m_direction),
+				destination_station,
+				getRealTimeStatus(destination_station, m_direction)
+			);
+			Builder about = new AlertDialog.Builder(this);
+	        about.setTitle("Route information");
 	        about.setMessage(message);
 	        about.setPositiveButton("OK", null);
 	        about.show();

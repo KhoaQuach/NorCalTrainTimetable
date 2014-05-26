@@ -9,7 +9,9 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Locale;
@@ -236,30 +238,60 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     }
  
     /*
-     * Build appropriate query statement to get data from database
+     * Build appropriate query statement to more detail on the selected stations
      */
-    private String BuildQueryStatement(String source_station_name, String destination_station_name, String direction, ScheduleEnum selectedSchedule) {
+    private String BuildGetDetailQueryStatement(String source_station_name, String destination_station_name, String direction) {
     	
     	String queryStatement = "", contents = "";
     	
-    	// Get current date in this format, YYYYMMDD
-    	SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMdd", Locale.US);
-    	dateFormatter.setLenient(false);
-    	String today = dateFormatter.format(new Date());
+    	contents = getFileContents("queries/getdetail.txt");
+	   	queryStatement = String.format(contents, direction, source_station_name, direction, destination_station_name);
+    	
+    	return queryStatement;
+    }
+    
+    /*
+     * Build appropriate query statement to get data from database
+     */
+    private String BuildGetRouteQueryStatement(String source_station_name, String destination_station_name, String direction, ScheduleEnum selectedSchedule) {
+    	
+    	String queryStatement = "", contents = "", theDate = "";
+    	GregorianCalendar date = new GregorianCalendar(); 
     	
     	switch (selectedSchedule) {
     	case WEEKDAY:
+    		
+    		while( date.get( Calendar.DAY_OF_WEEK ) != Calendar.MONDAY )
+    		  date.add( Calendar.DATE, 1 );
+    		
+    		theDate = String.format("%d%02d%02d", date.get(Calendar.YEAR), date.get(Calendar.MONTH), date.get(Calendar.DAY_OF_MONTH));
+    		
     		contents = getFileContents("queries/weekday.txt");
-	   		queryStatement = String.format(contents, direction, today, today, today, source_station_name, destination_station_name);
+	   		queryStatement = String.format(contents, direction, theDate, theDate, theDate, source_station_name, destination_station_name);
     		break;
+    		
     	case SATURDAY:
+    		
+    		while( date.get( Calendar.DAY_OF_WEEK ) != Calendar.SATURDAY )
+      		  date.add( Calendar.DATE, 1 );
+      		
+      		theDate = String.format("%d%02d%02d", date.get(Calendar.YEAR), date.get(Calendar.MONTH), date.get(Calendar.DAY_OF_MONTH));
+    		
     		contents = getFileContents("queries/saturday.txt");
-	   		queryStatement = String.format(contents, direction, today, today, today, source_station_name, destination_station_name);
+	   		queryStatement = String.format(contents, direction, theDate, theDate, theDate, source_station_name, destination_station_name);
     		break;
+    		
     	case SUNDAY:
+    		
+    		while( date.get( Calendar.DAY_OF_WEEK ) != Calendar.SUNDAY )
+        		  date.add( Calendar.DATE, 1 );
+        		
+        	theDate = String.format("%d%02d%02d", date.get(Calendar.YEAR), date.get(Calendar.MONTH), date.get(Calendar.DAY_OF_MONTH));
+        		
     		contents = getFileContents("queries/sunday.txt");
-	   		queryStatement = String.format(contents, direction, today, today, today, source_station_name, destination_station_name);
+	   		queryStatement = String.format(contents, direction, theDate, theDate, theDate, source_station_name, destination_station_name);
     		break;
+    		
     	}
     	
     	return queryStatement;
@@ -775,6 +807,37 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     }
     
     /*
+     * Get the station details based on the current source and destination stations, 
+     * and wherether it is southbound or northbound
+     */
+    public ArrayList<String> getStationDetails(String source_station_name, String destination_station_name, String direction) throws Exception {
+    
+    	ArrayList<String> detailList = new ArrayList<String>();
+    	
+    	String selectQuery = BuildGetDetailQueryStatement(source_station_name, destination_station_name, direction);
+    	
+		try {
+			SQLiteDatabase db = this.getReadableDatabase();
+			Cursor cursor = db.rawQuery(selectQuery, null);
+			
+			if ( cursor.moveToFirst() ) {
+				
+			    do { 
+			    	
+			    	
+			    	detailList.add(cursor.getString(0));
+			    	
+			    } while ( cursor.moveToNext() );
+			}
+			
+		} catch(Exception e) {
+			throw e;
+		}
+
+    	return detailList;
+    }
+    
+    /*
      * Get all the route details based on the current source and destination stations, 
      * and wherether it is southbound or northbound
      */
@@ -786,8 +849,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	// Populate data if they're not there
     	populateAllDataToTables();
     	
-    	//String selectQuery = "SELECT 2, '08:56', '09:45', '50', '3.50'";
-    	String selectQuery = BuildQueryStatement(source_station_name, destination_station_name, direction, selectedSchedule);
+    	String selectQuery = BuildGetRouteQueryStatement(source_station_name, destination_station_name, direction, selectedSchedule);
     	
 		try {
 			SQLiteDatabase db = this.getReadableDatabase();

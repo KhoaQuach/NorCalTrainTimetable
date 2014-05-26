@@ -1,0 +1,30 @@
+select
+    fa.price
+from
+    fare_rules as fr
+join
+    fare_attributes as fa on fa.fare_id = fr.fare_id
+where
+    fr.origin_id in
+(
+select s.zone_id
+from calendar c
+join trips as  t on t.service_id = c.service_id
+join routes as r on r.route_id = t.route_id
+join stop_times st on st.trip_id = t.trip_id
+join stops s on s.stop_id = st.stop_id and s.platform_code = "%s" and zone_id > 0
+where
+    s.stop_name like "%s%%"
+)
+and
+   fr.destination_id in
+(
+select s.zone_id
+from calendar c
+join trips as  t on t.service_id = c.service_id
+join routes as r on r.route_id = t.route_id
+join stop_times st on st.trip_id = t.trip_id
+join stops s on s.stop_id = st.stop_id and s.platform_code = "%s" and zone_id > 0
+where
+    s.stop_name like "%s%%"
+)

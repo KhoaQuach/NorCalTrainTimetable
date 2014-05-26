@@ -56,7 +56,7 @@
     		android:layout_height="40dp"
     		android:layout_weight="2.0"
     		android:text="@string/button_reverse_label"
-    		android:onClick="onButtonReverseClicked"/>/>
+    		android:onClick="onButtonReverseClicked"/>
 	
 		<Spinner
 	   		android:id="@+id/destination_station"
@@ -74,39 +74,39 @@
         
 		<TextView
 			android:id="@+id/route_number_label"
-			android:text="Route"
 			android:textStyle="bold"
 	   		android:layout_width="0dp"
 	   		android:layout_height="wrap_content"
 	   		android:gravity="left"
-	   		android:layout_weight="1.0"/>
+	   		android:layout_weight="1.0"
+	   		android:text="Route"/>
 	    
 		<TextView
 	   		android:id="@+id/route_depart_label"
-	   		android:text="Depart"
 	   		android:textStyle="bold"
 	   		android:layout_width="0dp"
 	   		android:layout_height="wrap_content"
 	   		android:gravity="left"
-	   		android:layout_weight="1.0"/>
+	   		android:layout_weight="1.0"
+	   		android:text="Depart"/>
 		
 		<TextView
 	   		android:id="@+id/route_arrive_label"
-	   		android:text="Arrive"
 	   		android:textStyle="bold"
 	   		android:layout_width="0dp"
 	   		android:layout_height="wrap_content"
 	   		android:gravity="left"
-	   		android:layout_weight="1.0"/>
+	   		android:layout_weight="1.0"
+	   		android:text="Arrive"/>
 		
 		<TextView
 	   		android:id="@+id/route_duration_label"
-	   		android:text="Duration"
 	   		android:textStyle="bold"
 	   		android:layout_width="0dp"
 	   		android:layout_height="wrap_content"
 	   		android:gravity="left"
-	   		android:layout_weight="1.0"/>
+	   		android:layout_weight="1.0"
+	   		android:text="Duration"/>
 		
   	</LinearLayout>
     

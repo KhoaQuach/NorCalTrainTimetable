@@ -3,6 +3,19 @@
     tools:context="com.khoa.quach.norcalcaltraintimetable.MainTimetableActivity" >
 
     <item
+        android:id="@+id/action_detail"
+        android:orderInCategory="100"
+        android:showAsAction="always"
+        android:icon="@drawable/ic_action_detail"
+        android:title="@string/action_detail"/>
+    
+    <item
+        android:id="@+id/action_help"
+        android:orderInCategory="100"
+        android:showAsAction="never"
+        android:title="@string/action_help"/>
+    
+    <item
         android:id="@+id/action_about"
         android:orderInCategory="100"
         android:showAsAction="never"
