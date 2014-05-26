@@ -10,9 +10,9 @@
     <string name="button_reverse_label">&#60;-&#62;</string>
     <string name="station_from_label">From</string>
     <string name="station_to_label">To</string>
-    <string name="radio_button_weekday_label">Weekday schedule</string>
-    <string name="radio_button_saturday_label">Saturday schedule</string>
-    <string name="radio_button_sunday_label">Sunday schedule</string>
+    <string name="radio_button_weekday_label">Bus. Days</string>
+    <string name="radio_button_saturday_label">Sat</string>
+    <string name="radio_button_sunday_label">Sun</string>
     <string name="routes_csv">gtfs/routes.txt</string>
     <string name="stops_csv">gtfs/stops.txt</string>
     <string name="stop_times_csv">gtfs/stop_times.txt</string>

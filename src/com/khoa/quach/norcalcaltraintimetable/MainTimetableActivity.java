@@ -27,6 +27,7 @@ import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Html;
 import android.view.Menu;
@@ -283,7 +284,7 @@ public class MainTimetableActivity extends Activity {
 		XmlPullParserFactory factory;
 		String route_name = "", stop_name = "", depart_time = "", status = "";
 		String search_direction = direction.equals("SB")?"SOUTHBOUND":"NORTHBOUND";
-		boolean skip = false, hasData = false;
+		boolean skip = false, hasData = true;
 		
 		try {
 			
@@ -305,6 +306,8 @@ public class MainTimetableActivity extends Activity {
 			            	route_name = parser.getAttributeValue(null, "Name");
 			                if (route_name.contains(search_direction)) {
 			                	skip = false;
+			                	response.append(route_name);
+			            		response.append("\n");
 			                } else {
 			                	skip = true;
 			                }
@@ -315,6 +318,11 @@ public class MainTimetableActivity extends Activity {
 			            		response.append("\n");
 			            	}
 			            }      
+			            else if (tagName.equalsIgnoreCase("DepartureTimeList")) {
+			            	if (!skip) {
+			            		response.append("\n");
+			            	}
+			            }
 			            else if (tagName.equalsIgnoreCase("DepartureTime")) {
 			            	if (!skip) {
 			            		depart_time = parser.getText();
@@ -410,8 +418,9 @@ public class MainTimetableActivity extends Activity {
         		
         		depart = departFormat.parse(r.getRouteDepart());
         		
-        		if ( (60*1000*30) <= (depart.getTime() - now.getTime()) ) {
+        		if ( 0 <= (depart.getTime() - now.getTime()) ) {
         			routeDetailList.setSelection(position);
+        			arrayAdapter.setHighlightPosition(position);
         			break;
         		}
         		
@@ -419,6 +428,14 @@ public class MainTimetableActivity extends Activity {
         	}
         	
         	arrayAdapter.notifyDataSetChanged();
+        	
+        	routeDetailList.getFocusables(position);
+			routeDetailList.setSelected(true);
+			
+			View highlight = routeDetailList.getChildAt(position);
+			if (highlight != null) {
+				highlight.setBackgroundColor(Color.DKGRAY);
+			}
         }
         catch(Exception e)
         {
@@ -627,14 +644,12 @@ public class MainTimetableActivity extends Activity {
 			String message = String.format(
 					"%s to %s\n\n" +
 					"Fare: $%.2f\n\n" +
-					"Real-time departing times at %s station:\n %s\n\n" +
-					"Real-time arriving times at %s station:\n %s\n\n", 
+					"Real-time departing times at:\n%s\n\n" +
+					"Real-time arriving times at:\n%s\n\n\n", 
 				source_station,
 				destination_station,
 				Float.parseFloat(fare),
-				source_station,
 				getRealTimeStatus(source_station, m_direction),
-				destination_station,
 				getRealTimeStatus(destination_station, m_direction)
 			);
 			Builder about = new AlertDialog.Builder(this);

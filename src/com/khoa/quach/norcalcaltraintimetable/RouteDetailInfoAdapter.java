@@ -16,6 +16,7 @@ public class RouteDetailInfoAdapter extends ArrayAdapter<RouteDetail> {
     int resource;
     String response;
     Context context;
+    int highlight_position;
     
     public RouteDetailInfoAdapter(Context context, int resource, List<RouteDetail> items) {
         super(context, resource, items);
@@ -23,6 +24,10 @@ public class RouteDetailInfoAdapter extends ArrayAdapter<RouteDetail> {
  
     }
      
+    public void setHighlightPosition(int position) {
+    	highlight_position = position;
+    }
+    
     @Override
     public View getView(int position, View convertView, ViewGroup parent)
     {
@@ -56,7 +61,10 @@ public class RouteDetailInfoAdapter extends ArrayAdapter<RouteDetail> {
         route_name = routeDetail.getRouteName();
         
         // Set different background color
-        if (route_name.equals("Bullet")) {
+        if (highlight_position == position) {
+        	routeDetailView.setBackgroundColor(android.graphics.Color.MAGENTA);
+        }
+        else if (route_name.equals("Bullet")) {
         	routeDetailView.setBackgroundColor(android.graphics.Color.GREEN);
         } else if (route_name.equals("Limited")) {
         	routeDetailView.setBackgroundColor(android.graphics.Color.CYAN);

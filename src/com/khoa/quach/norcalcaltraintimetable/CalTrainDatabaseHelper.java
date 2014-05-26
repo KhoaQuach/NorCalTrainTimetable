@@ -261,7 +261,8 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	switch (selectedSchedule) {
     	case WEEKDAY:
     		
-    		while( date.get( Calendar.DAY_OF_WEEK ) != Calendar.MONDAY )
+    		while( (date.get( Calendar.DAY_OF_WEEK ) == Calendar.SATURDAY) ||  
+    				(date.get( Calendar.DAY_OF_WEEK ) == Calendar.SUNDAY))
     		  date.add( Calendar.DATE, 1 );
     		
     		theDate = String.format("%d%02d%02d", date.get(Calendar.YEAR), date.get(Calendar.MONTH), date.get(Calendar.DAY_OF_MONTH));
