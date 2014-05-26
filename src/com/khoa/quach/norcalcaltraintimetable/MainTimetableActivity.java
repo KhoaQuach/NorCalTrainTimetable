@@ -626,12 +626,12 @@ public class MainTimetableActivity extends Activity {
 			// Build message with real-time traffic
 			String message = String.format(
 					"%s to %s\n\n" +
-					"Fare: $%s\n\n" +
+					"Fare: $%.2f\n\n" +
 					"Real-time departing times at %s station:\n %s\n\n" +
 					"Real-time arriving times at %s station:\n %s\n\n", 
 				source_station,
 				destination_station,
-				fare,
+				Float.parseFloat(fare),
 				source_station,
 				getRealTimeStatus(source_station, m_direction),
 				destination_station,
