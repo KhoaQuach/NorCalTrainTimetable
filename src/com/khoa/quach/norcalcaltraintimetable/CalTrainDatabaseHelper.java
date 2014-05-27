@@ -907,7 +907,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 		} catch(Exception e) {
 			throw e;
 		}
-
+		
     	return detailList;
     }
     

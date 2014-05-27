@@ -87,8 +87,7 @@ public class RouteDetail {
              Date depart = sdf.parse(this.route_depart);
              departTime = new SimpleDateFormat("hh:mm a").format(depart);
      	} catch (java.text.ParseException e) {
- 			// TODO Auto-generated catch block
- 			e.printStackTrace();
+ 			departTime = route_depart;
  		}
     	 
         return departTime;
@@ -112,8 +111,7 @@ public class RouteDetail {
             Date arrive = sdf.parse(this.route_arrive);
             arriveTime = new SimpleDateFormat("hh:mm a").format(arrive);
     	} catch (java.text.ParseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			arriveTime = route_arrive;
 		}
     	
         return arriveTime;

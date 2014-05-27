@@ -1,9 +1,5 @@
 package com.khoa.quach.norcalcaltraintimetable;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -15,9 +11,6 @@ import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutionException;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.StatusLine;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
@@ -27,25 +20,26 @@ import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Html;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.RadioButton;
 
-public class MainTimetableActivity extends Activity {
+public class MainTimetableActivity extends Activity implements OnFinishedGetDetailData {
 	
 	CalTrainDatabaseHelper m_caltrainDb;
 	List<String> m_stationNames;
     int m_current_source_position = 0;
     int m_current_destination_position = 0;
     String m_direction;
+    MenuItem m_itemDetail;
     
     ScheduleEnum m_SelectedSchedule = ScheduleEnum.WEEKDAY;
  
@@ -59,6 +53,10 @@ public class MainTimetableActivity extends Activity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		
+		requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
+		setProgressBarIndeterminateVisibility(true); 
+		
 		setContentView(R.layout.main_ui_timetable);
 		
 		Thread.setDefaultUncaughtExceptionHandler(new MyExceptionHandler());
@@ -87,7 +85,6 @@ public class MainTimetableActivity extends Activity {
 	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.main_timetable, menu);
 		return true;
@@ -101,8 +98,16 @@ public class MainTimetableActivity extends Activity {
 		int id = item.getItemId();
 		if (id == R.id.action_detail) {
 			
-			showRouteDetailDialog();
+			m_itemDetail = item;
+	        
+			if ( m_itemDetail != null) m_itemDetail.setActionView(R.layout.progress_bar);
 			
+			String source_station = this.m_stationNames.get(this.m_current_source_position);
+			String destination_station = this.m_stationNames.get(this.m_current_destination_position);
+			
+			getRealTimeStatus(source_station, destination_station, m_direction);
+			//getRealTimeStatus(destination_station, m_direction);
+            
 			return true;
 		}
 		if (id == R.id.action_help) {
@@ -119,7 +124,7 @@ public class MainTimetableActivity extends Activity {
 		}
 		return super.onOptionsItemSelected(item);
 	}
-
+	
 	/*
 	 * Check event on reverse button, swap the source and destination stations,
 	 * and update the routes accordingly
@@ -217,6 +222,13 @@ public class MainTimetableActivity extends Activity {
 	    
 	}
 	
+	@Override
+	public void OnFinishedGetDetailData(String xmlData) {
+		String status = parseRouteDetailXmlResponse(xmlData, m_direction);
+		showRouteDetailDialog(status);	
+		this.m_itemDetail.setActionView(null);
+	}
+	
 	 /*
      * Pop up an error message to tell the user what was wrong
      * and print out a stack trace
@@ -242,49 +254,20 @@ public class MainTimetableActivity extends Activity {
 	/*
 	 * Send a web request to get real-time times status on a station
 	 */
-	private String getRealTimeStatus(String station_name, String direction) {
-		String status = "";
-		String url = "";
+	private void getRealTimeStatus(String source_station_name, String destination_station_name, String direction) {
+		
+		String source_url = "", destination_url = "";
 		StringBuilder builder = new StringBuilder();
 		
 		try {
-			url = "http://services.my511.org/Transit2.0/GetNextDeparturesByStopName.aspx?token=86666b21-c313-4c78-8690-44a1cb06d34e&agencyName=Caltrain&stopName=" +
-					URLEncoder.encode(station_name, "UTF-8") + "+Station";
+			source_url = "http://services.my511.org/Transit2.0/GetNextDeparturesByStopName.aspx?token=86666b21-c313-4c78-8690-44a1cb06d34e&agencyName=Caltrain&stopName=" +
+					URLEncoder.encode(source_station_name, "UTF-8") + "+Station";
+			destination_url = "http://services.my511.org/Transit2.0/GetNextDeparturesByStopName.aspx?token=86666b21-c313-4c78-8690-44a1cb06d34e&agencyName=Caltrain&stopName=" +
+					URLEncoder.encode(destination_station_name, "UTF-8") + "+Station";
 		} catch (UnsupportedEncodingException e) {}
 		
 		GetRouteDetailClient getDetail = new GetRouteDetailClient(this);
-		getDetail.execute(url);
-		
-		try {
-			HttpResponse response = getDetail.get();
-			StatusLine statusLine = response.getStatusLine();
-            int statusCode = statusLine.getStatusCode();
-            if (statusCode == 200) {
-                    HttpEntity entity = response.getEntity();
-                    InputStream content = entity.getContent();
-                    BufferedReader reader = new BufferedReader(
-                                    new InputStreamReader(content));
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                            builder.append(line);
-                    }
-                    status = parseRouteDetailXmlResponse(builder.toString(), direction);
-            } 
-		} catch (InterruptedException e) {
-			status = e.getLocalizedMessage();
-		} catch (ExecutionException e) {
-			status = e.getLocalizedMessage();
-		} catch (IllegalStateException e) {
-			status = e.getLocalizedMessage();
-		} catch (IOException e) {
-			status = e.getLocalizedMessage();
-		}
-		
-		if ( status == null || status.equals("")) {
-			status = "Encountered error getting real-time status!";
-		}
-		
-		return status;
+		getDetail.execute(source_url, destination_url);
 	}
 	
 	/*
@@ -296,7 +279,7 @@ public class MainTimetableActivity extends Activity {
 		XmlPullParserFactory factory;
 		String route_name = "", stop_name = "", depart_time = "", status = "";
 		String search_direction = direction.equals("SB")?"SOUTHBOUND":"NORTHBOUND";
-		boolean skip = false, hasData = true;
+		boolean skip = false, hasData = false;
 		
 		try {
 			
@@ -312,9 +295,9 @@ public class MainTimetableActivity extends Activity {
 		        	
 		        	tagName = parser.getName();
 		        	
-		        	if ( tagName != null && eventType == XmlPullParser.START_TAG) {
+		        	if ( tagName != null ) {
 		        		
-			            if(tagName.equalsIgnoreCase("Route")) {
+			            if(tagName.equalsIgnoreCase("Route") && eventType == XmlPullParser.START_TAG) {
 			            	route_name = parser.getAttributeValue(null, "Name");
 			                if (route_name.contains(search_direction)) {
 			                	skip = false;
@@ -323,19 +306,26 @@ public class MainTimetableActivity extends Activity {
 			                } else {
 			                	skip = true;
 			                }
-			            } else if(tagName.equalsIgnoreCase("Stop")) {
+			            } else if(tagName.equalsIgnoreCase("Stop") && eventType == XmlPullParser.START_TAG) {
 			            	if (!skip) {
 			            		stop_name = parser.getAttributeValue(null, "name");
 			            		response.append(stop_name);
 			            		response.append("\n");
 			            	}
 			            }      
-			            else if (tagName.equalsIgnoreCase("DepartureTimeList")) {
+			            else if (tagName.equalsIgnoreCase("DepartureTimeList") && eventType == XmlPullParser.START_TAG) {
 			            	if (!skip) {
 			            		response.append("\n");
 			            	}
 			            }
-			            else if (tagName.equalsIgnoreCase("DepartureTime")) {
+			            else if (tagName.equalsIgnoreCase("DepartureTimeList") && eventType == XmlPullParser.END_TAG) {
+			            	if (!skip) {
+			            		if (!hasData) {
+			            			response.append("Sorry...real-time status is unavailable at the moment!\n\n");
+			            		}
+			            	}
+			            }
+			            else if (tagName.equalsIgnoreCase("DepartureTime") && eventType == XmlPullParser.START_TAG) {
 			            	if (!skip) {
 			            		depart_time = parser.getText();
 			            		if ( depart_time != null && !depart_time.equals("")) {
@@ -362,12 +352,7 @@ public class MainTimetableActivity extends Activity {
 			e.printStackTrace();
 		}
 		
-		if ( !hasData ) {
-			status = "";
-		}
-		else {
-			status = response.toString();
-		}
+		status = response.toString();
 		
 		return status;
 	}
@@ -408,46 +393,51 @@ public class MainTimetableActivity extends Activity {
         		routes = m_caltrainDb.getRouteDetails(source_station_name, destination_station_name, m_direction, selectedSchedule);
         	}
         	
-        	// Bind data to the interface
-        	RouteDetailInfoAdapter arrayAdapter = new RouteDetailInfoAdapter(this, R.layout.route_info, routes);
-        	routeDetailList.setAdapter(arrayAdapter);
-        	
-        	// Update to visible position that close to current time
-        	SimpleDateFormat departFormat = new SimpleDateFormat("hh:mm a");
-        	SimpleDateFormat nowFormat = new SimpleDateFormat("HH:mm:ss");
-
-        	Date depart = null;
-            Date now = new Date();
-            
-            final Calendar c = Calendar.getInstance(TimeZone.getDefault());
-            
-            String current_time = c.get(Calendar.HOUR_OF_DAY) + ":" + c.get(Calendar.MINUTE) + ":" + c.get(Calendar.SECOND);
-            now = nowFormat.parse(current_time);
-            
-            int position = 0;
-        	
-        	for (RouteDetail r: routes) {
+        	if (!routes.isEmpty()) {
+        		// Bind data to the interface
+            	RouteDetailInfoAdapter arrayAdapter = new RouteDetailInfoAdapter(this, R.layout.route_info, routes);
+            	routeDetailList.setAdapter(arrayAdapter);
+            	
+	        	// Update to visible position that close to current time
+	        	SimpleDateFormat departFormat = new SimpleDateFormat("hh:mm a");
+	        	SimpleDateFormat nowFormat = new SimpleDateFormat("HH:mm:ss");
+	
+	        	Date depart = null;
+	            Date now = new Date();
+	            
+	            final Calendar c = Calendar.getInstance(TimeZone.getDefault());
+	            
+	            String current_time = c.get(Calendar.HOUR_OF_DAY) + ":" + c.get(Calendar.MINUTE) + ":" + c.get(Calendar.SECOND);
+	            now = nowFormat.parse(current_time);
+	            
+	            int position = 0;
+	        	
+	        	for (RouteDetail r: routes) {
+	        		
+	        		depart = departFormat.parse(r.getRouteDepart());
+	        		
+	        		if ( 0 <= (depart.getTime() - now.getTime()) ) {
+	        			routeDetailList.setSelection(position);
+	        			arrayAdapter.setHighlightPosition(position);
+	        			break;
+	        		}
+	        		
+	        		position++;
+	        	}
+	        	
+	        	arrayAdapter.notifyDataSetChanged();
+        	}
+        	else {
+        		routes.add(new RouteDetail("", "No routes", "available", "", ""));
         		
-        		depart = departFormat.parse(r.getRouteDepart());
-        		
-        		if ( 0 <= (depart.getTime() - now.getTime()) ) {
-        			routeDetailList.setSelection(position);
-        			arrayAdapter.setHighlightPosition(position);
-        			break;
-        		}
-        		
-        		position++;
+        		// Bind data to the interface
+            	RouteDetailInfoAdapter arrayAdapter = new RouteDetailInfoAdapter(this, R.layout.route_info, routes);
+            	routeDetailList.setAdapter(arrayAdapter);
+            	
+            	arrayAdapter.notifyDataSetChanged();
         	}
         	
-        	arrayAdapter.notifyDataSetChanged();
         	
-        	routeDetailList.getFocusables(position);
-			routeDetailList.setSelected(true);
-			
-			View highlight = routeDetailList.getChildAt(position);
-			if (highlight != null) {
-				highlight.setBackgroundColor(Color.DKGRAY);
-			}
         }
         catch(Exception e)
         {
@@ -639,15 +629,14 @@ public class MainTimetableActivity extends Activity {
 	/*
 	 * Gather route detail information and display them in this dialog
 	 */
-	private void showRouteDetailDialog() {
+	private void showRouteDetailDialog(String status) {
 		
 		String fare = "";
 		
 		String source_station = this.m_stationNames.get(this.m_current_source_position);
 		String destination_station = this.m_stationNames.get(this.m_current_destination_position);
 		
-		try {
-			
+		try {      
 			// Get fare
 			ArrayList<String> stationDetails = m_caltrainDb.getStationDetails(source_station, destination_station, m_direction);
 			
@@ -657,19 +646,19 @@ public class MainTimetableActivity extends Activity {
 			String message = String.format(
 					"%s to %s\n\n" +
 					"Fare: $%.2f\n\n" +
-					"Real-time departing times at:\n%s\n\n" +
-					"Real-time arriving times at:\n%s\n\n\n", 
+					"Real-time status:\n\n%s\n\n",
 				source_station,
 				destination_station,
 				Float.parseFloat(fare),
-				getRealTimeStatus(source_station, m_direction),
-				getRealTimeStatus(destination_station, m_direction)
+				status
 			);
-			Builder about = new AlertDialog.Builder(this);
-	        about.setTitle("Route information");
-	        about.setMessage(message);
-	        about.setPositiveButton("OK", null);
-	        about.show();
+			
+			Builder routeDetail = new AlertDialog.Builder(this);
+			routeDetail.setTitle("Route information");
+	        routeDetail.setMessage(message);
+	        routeDetail.setPositiveButton("OK", null);
+	        routeDetail.show();
+	        
 		} catch(Exception e) {}
 	}
 	

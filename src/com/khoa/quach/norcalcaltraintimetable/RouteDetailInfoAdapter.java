@@ -16,7 +16,7 @@ public class RouteDetailInfoAdapter extends ArrayAdapter<RouteDetail> {
     int resource;
     String response;
     Context context;
-    int highlight_position;
+    int highlight_position = -1;
     
     public RouteDetailInfoAdapter(Context context, int resource, List<RouteDetail> items) {
         super(context, resource, items);
