@@ -74,6 +74,18 @@ public class MainTimetableActivity extends Activity {
 	}
 
 	@Override
+	public void onResume() {
+		super.onResume(); 
+		
+		if ( m_caltrainDb == null ) {
+			m_caltrainDb = new CalTrainDatabaseHelper(this);
+			m_caltrainDb.SetupDatabaseTables();
+		}
+		
+		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_SelectedSchedule);
+	}
+	
+	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 
 		// Inflate the menu; this adds items to the action bar if it is present.
@@ -594,7 +606,8 @@ public class MainTimetableActivity extends Activity {
 	        help.setTitle(R.string.app_name);
 	        help.setMessage(Html.fromHtml("<font color='#00FF00'><b>Green item:</b></font>" 
 	        		+ " bullet train. <br> <font color='#00FFFF'><b>Cyan item:</b></font> " 
-	        		+ " limited train. <br> Everything else is normal local train"));
+	        		+ " limited train. <br> Everything else is normal local train"
+	        		+ "<br> <font color='#FF00FF'><b>Magenta item:</b></font> next train"));
 	        help.setPositiveButton("OK", null);
 	        help.show();
 		} catch(Exception e) {}
