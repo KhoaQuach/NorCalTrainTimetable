@@ -20,6 +20,8 @@ import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.text.Html;
 import android.view.Menu;
@@ -98,15 +100,19 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 		int id = item.getItemId();
 		if (id == R.id.action_detail) {
 			
-			m_itemDetail = item;
-	        
-			if ( m_itemDetail != null) m_itemDetail.setActionView(R.layout.progress_bar);
-			
-			String source_station = this.m_stationNames.get(this.m_current_source_position);
-			String destination_station = this.m_stationNames.get(this.m_current_destination_position);
-			
-			getRealTimeStatus(source_station, destination_station, m_direction);
-			//getRealTimeStatus(destination_station, m_direction);
+			if ( this.isNetworkAvailable() ) {
+				m_itemDetail = item;
+				
+				if ( m_itemDetail != null) m_itemDetail.setActionView(R.layout.progress_bar);
+				
+				String source_station = this.m_stationNames.get(this.m_current_source_position);
+				String destination_station = this.m_stationNames.get(this.m_current_destination_position);
+				
+				getRealTimeStatus(source_station, destination_station, m_direction);
+			} 
+			else {
+				showRouteDetailDialog("No network connection");
+			}
             
 			return true;
 		}
@@ -270,6 +276,26 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 		getDetail.execute(source_url, destination_url);
 	}
 	
+	/*
+	 * Check if network is available
+	 */
+	public Boolean isNetworkAvailable()  {
+		  
+        try{
+            ConnectivityManager connectivityManager = (ConnectivityManager)this.getSystemService(this.CONNECTIVITY_SERVICE);      
+                                                          
+            NetworkInfo wifiInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+            NetworkInfo mobileInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
+            if (wifiInfo.isConnected() || mobileInfo.isConnected()) {
+                return true;
+            }
+        }
+        catch(Exception e){
+           e.printStackTrace();
+        }
+        return false;
+    }
+   
 	/*
 	 * Parse the route detail xml response 
 	 */
