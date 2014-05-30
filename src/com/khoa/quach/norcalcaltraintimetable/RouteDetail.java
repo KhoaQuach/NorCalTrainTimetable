@@ -12,6 +12,7 @@ public class RouteDetail {
     String route_arrive;
     String route_duration;
     String route_name;
+    boolean need_transfer = true;
     
     // Empty constructor
     public RouteDetail(){}
@@ -67,6 +68,14 @@ public class RouteDetail {
         {
             // TODO: handle exception
         } 
+    }
+    
+    public boolean getNeedTransfer() {
+    	return need_transfer;
+    }
+    
+    public void setNeedTransfer(boolean _need_transfer) {
+    	need_transfer = _need_transfer;
     }
     
     public String getRouteNumber(){
@@ -140,4 +149,5 @@ public class RouteDetail {
     public void setRouteName(String _route_name){
         this.route_name = _route_name;
     }
+    
 }

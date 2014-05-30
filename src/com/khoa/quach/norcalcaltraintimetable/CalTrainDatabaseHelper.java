@@ -13,8 +13,10 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Hashtable;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -847,6 +849,10 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	ArrayList<RouteDetail> detailList = new ArrayList<RouteDetail>();
     	String route_number = "", route_name = "";
     	
+    	// Data is temporarily held here
+		Map<String, RouteDetail> routeTempDetail = new LinkedHashMap<String, RouteDetail>();
+		RouteDetail newRouteDetail;
+		
     	// Populate data if they're not there
     	populateAllDataToTables();
     	
@@ -857,10 +863,6 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			Cursor cursor = db.rawQuery(selectQuery, null);
 			
 			if ( cursor.moveToFirst() ) {
-				
-				// Data is temporarily held here
-				Hashtable<String, RouteDetail> routeTempDetail = new Hashtable<String, RouteDetail>();
-				RouteDetail newRouteDetail;
 				
 			    do { 
 			    	
@@ -879,6 +881,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			    		newRouteDetail.setRouteNumber(route_number);
 			    		newRouteDetail.setRouteDepart(cursor.getString(2).trim());
 			    		newRouteDetail.setRouteName(cursor.getString(3).trim());
+			    		newRouteDetail.setRouteArrive("Transfer(s)");
 			    		
 			    		// Save it in a temporary hashtable object
 			    		routeTempDetail.put(route_number, newRouteDetail);
@@ -895,13 +898,29 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			    		newRouteDetail = routeTempDetail.get(route_number);
 			    		
 			    		if ( (newRouteDetail != null) && (route_name.equals(newRouteDetail.getRouteName()))) {
-			    			newRouteDetail.setRouteArrive(cursor.getString(2).trim());
-			    			detailList.add(newRouteDetail);
+			    			routeTempDetail.get(route_number).setRouteArrive(cursor.getString(2).trim());
+			    			routeTempDetail.get(route_number).setNeedTransfer(false);
 			    		}
 			    		
 			    	}
 			    	
 			    } while ( cursor.moveToNext() );
+			    
+			    // Now add items into the list in order
+			    for (Map.Entry<String, RouteDetail> entry : routeTempDetail.entrySet()) {
+			    	
+			        RouteDetail routeDetail = entry.getValue();
+			        if (routeDetail.getNeedTransfer()) {
+			        	// Determine if it has any transfer routes,
+			        	// if it does, build the transfer route list and add to detail list,
+			        	// otherwise, just ignore it
+			        	detailList.add(routeDetail);
+			        }
+			        else {
+			        	detailList.add(routeDetail);
+			        }
+			        
+			    }
 			}
 			
 		} catch(Exception e) {

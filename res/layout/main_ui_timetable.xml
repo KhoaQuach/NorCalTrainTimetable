@@ -78,7 +78,7 @@
 	   		android:layout_width="0dp"
 	   		android:layout_height="wrap_content"
 	   		android:gravity="left"
-	   		android:layout_weight="1.0"
+	   		android:layout_weight="1.1"
 	   		android:text="Route"/>
 	    
 		<TextView
@@ -87,7 +87,7 @@
 	   		android:layout_width="0dp"
 	   		android:layout_height="wrap_content"
 	   		android:gravity="left"
-	   		android:layout_weight="1.0"
+	   		android:layout_weight="1.1"
 	   		android:text="Depart"/>
 		
 		<TextView
@@ -96,7 +96,7 @@
 	   		android:layout_width="0dp"
 	   		android:layout_height="wrap_content"
 	   		android:gravity="left"
-	   		android:layout_weight="1.0"
+	   		android:layout_weight="1.1"
 	   		android:text="Arrive"/>
 		
 		<TextView
@@ -105,7 +105,7 @@
 	   		android:layout_width="0dp"
 	   		android:layout_height="wrap_content"
 	   		android:gravity="left"
-	   		android:layout_weight="1.0"
+	   		android:layout_weight="0.7"
 	   		android:text="Duration"/>
 		
   	</LinearLayout>
@@ -115,7 +115,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content" 
         android:divider="#000000"
-        android:dividerHeight="2dip"
+        android:dividerHeight="3dip"
 		android:paddingTop="2dip"
 		android:paddingBottom="10dip"/>
     

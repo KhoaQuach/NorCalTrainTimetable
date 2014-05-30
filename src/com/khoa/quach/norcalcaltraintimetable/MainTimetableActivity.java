@@ -3,13 +3,14 @@ package com.khoa.quach.norcalcaltraintimetable;
 import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.TimeZone;
-import java.util.concurrent.ExecutionException;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -18,17 +19,21 @@ import org.xmlpull.v1.XmlPullParserFactory;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
+import android.provider.AlarmClock;
 import android.text.Html;
+import android.view.ContextMenu;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.Window;
 import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Spinner;
@@ -42,6 +47,7 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
     int m_current_destination_position = 0;
     String m_direction;
     MenuItem m_itemDetail;
+    ArrayList<RouteDetail> m_routes = new ArrayList<RouteDetail>();
     
     ScheduleEnum m_SelectedSchedule = ScheduleEnum.WEEKDAY;
  
@@ -55,9 +61,6 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		
-		requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
-		setProgressBarIndeterminateVisibility(true); 
 		
 		setContentView(R.layout.main_ui_timetable);
 		
@@ -94,6 +97,7 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
+		
 		// Handle action bar item clicks here. The action bar will
 		// automatically handle clicks on the Home/Up button, so long
 		// as you specify a parent activity in AndroidManifest.xml.
@@ -127,7 +131,19 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 			showAboutDialog();
 			
 			return true;
-		}
+		} else if (id == R.id.action_closet_station) {
+			
+			// Get current GPS coordinates and set source station which is closet
+		
+			return true;
+		} 
+		else if (id == R.id.action_show_map) {
+		
+		// Show map between depart and destination stations
+	
+		return true;
+	}
+	
 		return super.onOptionsItemSelected(item);
 	}
 	
@@ -229,16 +245,86 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	}
 	
 	@Override
+	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo) {
+		
+		if (v.getId()==R.id.route_info_list) {
+			
+			AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo)menuInfo;
+			menu.setHeaderTitle("Add reminder");
+			String[] menuItems = getResources().getStringArray(R.array.pop_up_menu_labels);
+			for (int i = 0; i < menuItems.length; i++) {
+				switch(i) {
+				case 0:
+					menu.add(Menu.NONE, i, i, menuItems[i] + " " + m_routes.get(info.position).getRouteDepart() + " alarm");
+					break;
+				case 1:
+					if (!m_routes.get(info.position).getNeedTransfer()) {
+						menu.add(Menu.NONE, i, i, menuItems[i] + " " + m_routes.get(info.position).getRouteArrive() + " alarm");
+					}
+					break;
+				}
+			}
+			
+		}
+	}
+	
+	@Override
+	public boolean onContextItemSelected(MenuItem item) {
+		
+		AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo)item.getMenuInfo();
+		int menuItemIndex = item.getItemId();
+		String[] menuItems = getResources().getStringArray(R.array.pop_up_menu_labels);
+		String menuItemName = menuItems[menuItemIndex];
+	  
+		switch(menuItemIndex) {
+		case 0:
+			addAReminderAlarm("depart", m_routes.get(info.position).getRouteDepart());
+			break;
+		case 1:
+			addAReminderAlarm("arrive", m_routes.get(info.position).getRouteArrive());
+			break;
+		}
+      
+		return true;
+	}
+	
+	@Override
 	public void OnFinishedGetDetailData(String xmlData) {
 		String status = parseRouteDetailXmlResponse(xmlData, m_direction);
 		showRouteDetailDialog(status);	
 		this.m_itemDetail.setActionView(null);
 	}
 	
-	 /*
+	/*
+	 * Add a time to calendar for remindering
+	 */
+	private void addAReminderAlarm(String title, String timeStamp) {
+		
+		SimpleDateFormat dateFormat = new SimpleDateFormat("hh:mm a");
+		
+		Date alarmTime = new Date();
+		try {
+			alarmTime = dateFormat.parse(timeStamp);
+		} catch (ParseException e) {}
+		
+		Calendar alarmSet = new GregorianCalendar();
+		alarmSet.setTime(alarmTime);
+		
+		int hour = alarmSet.get(Calendar.HOUR_OF_DAY);
+		int minute = alarmSet.get(Calendar.MINUTE);
+		
+		Intent i = new Intent(AlarmClock.ACTION_SET_ALARM); 	
+		i.putExtra(AlarmClock.EXTRA_MESSAGE, timeStamp + " " + title + " alarm");
+		i.putExtra(AlarmClock.EXTRA_HOUR, hour); 
+		i.putExtra(AlarmClock.EXTRA_MINUTES, minute); 
+		startActivity(i); 
+		
+	}
+	
+	/*
      * Pop up an error message to tell the user what was wrong
      * and print out a stack trace
-     */
+    */
     private void exceptionMessage(String title, Exception e) {
     	
     	AlertDialog.Builder messageBox = new AlertDialog.Builder(this);
@@ -400,6 +486,10 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	 */
 	private void populateDataToRouteDetailList(int source_position, int destination_position, ScheduleEnum selectedSchedule) {
 	
+		m_routes.clear();
+		
+		if (m_itemDetail != null) m_itemDetail.setActionView(R.layout.progress_bar);
+		
         try
         {
         	// Set direction
@@ -412,17 +502,52 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
         	ListView routeDetailList = (ListView)findViewById(R.id.route_info_list);
         	routeDetailList.setSelection(0);
         	
-        	ArrayList<RouteDetail> routes = new ArrayList<RouteDetail>();
+        	routeDetailList.setTextFilterEnabled(true);
+
+        	// Bind onclick event handler
+        	routeDetailList.setOnItemClickListener(new OnItemClickListener() {
+        		
+        		public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+
+        			if (m_routes.get(position).getNeedTransfer()) {
+        				
+        				Builder transferDetail = new AlertDialog.Builder(view.getContext());
+        				StringBuilder details = new StringBuilder();
+        				
+        				String source_station = MainTimetableActivity.this.m_stationNames.get(MainTimetableActivity.this.m_current_source_position);
+        				String destination_station = MainTimetableActivity.this.m_stationNames.get(MainTimetableActivity.this.m_current_destination_position);
+        				
+        				transferDetail.setTitle("Transfer route(s)");
+        				
+        				// Build the message that includes: from station, transfer details, to station
+        				details.append("From " + source_station + ":\n");
+        				details.append("Route: " + m_routes.get(position).getRouteNumber() + "; Depart: " + m_routes.get(position).getRouteDepart() + "\n\n");
+        				
+        				details.append("Transfer detail:");
+        				
+        				transferDetail.setMessage(details.toString());
+        				
+        				transferDetail.setPositiveButton("OK", null);
+        				transferDetail.show();
+        				
+        			}
+        		}
+        		
+        	});
         	
         	if ( source_position != destination_position ) {
         		// Get routes info from database
-        		routes = m_caltrainDb.getRouteDetails(source_station_name, destination_station_name, m_direction, selectedSchedule);
+        		m_routes = m_caltrainDb.getRouteDetails(source_station_name, destination_station_name, m_direction, selectedSchedule);
         	}
         	
-        	if (!routes.isEmpty()) {
+        	if (!m_routes.isEmpty()) {
+        		
         		// Bind data to the interface
-            	RouteDetailInfoAdapter arrayAdapter = new RouteDetailInfoAdapter(this, R.layout.route_info, routes);
+            	RouteDetailInfoAdapter arrayAdapter = new RouteDetailInfoAdapter(this, R.layout.route_info, m_routes);
             	routeDetailList.setAdapter(arrayAdapter);
+            	
+            	// Register event to pop-up menu when long-press
+            	registerForContextMenu(routeDetailList);
             	
 	        	// Update to visible position that close to current time
 	        	SimpleDateFormat departFormat = new SimpleDateFormat("hh:mm a");
@@ -438,7 +563,7 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	            
 	            int position = 0;
 	        	
-	        	for (RouteDetail r: routes) {
+	        	for (RouteDetail r: m_routes) {
 	        		
 	        		depart = departFormat.parse(r.getRouteDepart());
 	        		
@@ -452,24 +577,27 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	        	}
 	        	
 	        	arrayAdapter.notifyDataSetChanged();
+	        	
         	}
         	else {
-        		routes.add(new RouteDetail("", "No routes", "available", "", ""));
+        		
+        		m_routes.add(new RouteDetail("", "No routes", "available", "", ""));
         		
         		// Bind data to the interface
-            	RouteDetailInfoAdapter arrayAdapter = new RouteDetailInfoAdapter(this, R.layout.route_info, routes);
+            	RouteDetailInfoAdapter arrayAdapter = new RouteDetailInfoAdapter(this, R.layout.route_info, m_routes);
             	routeDetailList.setAdapter(arrayAdapter);
             	
             	arrayAdapter.notifyDataSetChanged();
+        	
         	}
-        	
-        	
         }
         catch(Exception e)
         {
         	exceptionMessage("Failed to get route detail list", e);
 			e.printStackTrace();
         }
+        
+        if (m_itemDetail != null) m_itemDetail.setActionView(null);
         
 	}
 	
