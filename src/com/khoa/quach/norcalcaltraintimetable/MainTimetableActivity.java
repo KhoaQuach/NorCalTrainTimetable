@@ -10,6 +10,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Locale;
 import java.util.TimeZone;
 
 import org.xmlpull.v1.XmlPullParser;
@@ -19,11 +20,19 @@ import org.xmlpull.v1.XmlPullParserFactory;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.location.Criteria;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.AlarmClock;
 import android.text.Html;
@@ -38,8 +47,9 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.RadioButton;
+import android.widget.Toast;
 
-public class MainTimetableActivity extends Activity implements OnFinishedGetDetailData {
+public class MainTimetableActivity extends Activity implements OnFinishedGetDetailData, LocationListener {
 	
 	CalTrainDatabaseHelper m_caltrainDb;
 	List<String> m_stationNames;
@@ -47,6 +57,10 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
     int m_current_destination_position = 0;
     String m_direction;
     MenuItem m_itemDetail;
+    LocationManager m_locationManager;
+    String m_locationProvider;
+    double m_myLatitude = 0;
+    double m_myLongitude = 0;
     ArrayList<RouteDetail> m_routes = new ArrayList<RouteDetail>();
     
     ScheduleEnum m_SelectedSchedule = ScheduleEnum.WEEKDAY;
@@ -74,8 +88,16 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 		retrieveSelections();
 		
 		routeSelectEventHandler();
+		
+		initLocation();
 	}
 
+	@Override
+	protected void onPause() {
+	    super.onPause();
+	    m_locationManager.removeUpdates(this);
+	}
+	
 	@Override
 	public void onResume() {
 		super.onResume(); 
@@ -86,6 +108,8 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 		}
 		
 		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_SelectedSchedule);
+		
+		m_locationManager.requestLocationUpdates(m_locationProvider, 400, 1, this);
 	}
 	
 	@Override
@@ -131,19 +155,53 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 			showAboutDialog();
 			
 			return true;
-		} else if (id == R.id.action_closet_station) {
+		} else if (id == R.id.action_nearest_station) {
 			
-			// Get current GPS coordinates and set source station which is closet
-		
+			// Get current network or GPS coordinates and set source station which is nearest
+			setNearestDepartStation();
+			
 			return true;
 		} 
 		else if (id == R.id.action_show_map) {
 		
-		// Show map between depart and destination stations
+			Stop source_stop, destination_stop;
+			try {
+				source_stop = m_caltrainDb.getStopByName(this.m_stationNames.get(this.m_current_source_position));
+				destination_stop = m_caltrainDb.getStopByName(this.m_stationNames.get(this.m_current_destination_position));
+			} catch (Exception e) {
+				showGeneralErrorDialog("Error get location information from database!");
+				return false;
+			}
+			
+			double source_latitude = source_stop.getStopLat(); 
+			double source_longitude = source_stop.getStopLon();
+			double destination_latitude = destination_stop.getStopLat();
+			double destination_longitude = destination_stop.getStopLon();
+			
+			// Show map between depart and destination stations
+			showMap(source_latitude, source_longitude, destination_latitude, destination_longitude, "r");
 	
-		return true;
-	}
+			return true;
+		}
+		else if (id == R.id.action_show_map_to_nearest_station) {
+			
+			Stop source_stop;
+			try {
+				source_stop = m_caltrainDb.getStopByName(this.m_stationNames.get(this.m_current_source_position));
+			} catch (Exception e) {
+				showGeneralErrorDialog("Error get location information from database!");
+				return false;
+			}
+			
+			double destination_latitude = source_stop.getStopLat(); 
+			double destination_longitude = source_stop.getStopLon();
+			
+			// Show map between depart and destination stations
+			showMap(m_myLatitude, m_myLongitude, destination_latitude, destination_longitude, "");
 	
+			return true;
+		}
+		
 		return super.onOptionsItemSelected(item);
 	}
 	
@@ -295,6 +353,27 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 		this.m_itemDetail.setActionView(null);
 	}
 	
+	@Override
+	public void onLocationChanged(Location location) {
+		m_myLatitude = location.getLatitude();
+	    m_myLongitude = location.getLongitude();
+	}
+	
+	@Override
+	public void onProviderEnabled(String provider) {
+		Toast.makeText(this, "Enabled new location provider " + m_locationProvider, Toast.LENGTH_SHORT).show();
+	}
+	
+	@Override
+	public void onStatusChanged(String provider, int status, Bundle extras) {
+		Toast.makeText(this, "Location provider " + m_locationProvider + " changed", Toast.LENGTH_SHORT).show();
+	}
+
+	@Override
+	public void onProviderDisabled(String provider) {
+		Toast.makeText(this, "Disabled location provider " + m_locationProvider, Toast.LENGTH_SHORT).show();
+	}
+	
 	/*
 	 * Add a time to calendar for remindering
 	 */
@@ -360,6 +439,44 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 		
 		GetRouteDetailClient getDetail = new GetRouteDetailClient(this);
 		getDetail.execute(source_url, destination_url);
+	}
+	
+	/*
+	 * Obtain the current location information 
+	 */
+	private void initLocation() {
+		
+		// Get the location manager
+	    m_locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+	    
+	    Criteria criteria = new Criteria();
+	    m_locationProvider = m_locationManager.getBestProvider(criteria, false);
+	    Location location = m_locationManager.getLastKnownLocation(m_locationProvider);
+
+	    // Initialize the location fields
+	    if (location != null) {
+	    	onLocationChanged(location);
+	    }
+	    else {
+	    	this.showGeneralErrorDialog("Failed to get current location, please turn on GPS in order to set to nearest depart station!");
+	    }
+	    
+	}
+	
+	/*
+	 * Check if Google map is installed
+	 */
+	public boolean isGoogleMapsInstalled()
+	{
+	    try
+	    {
+	        ApplicationInfo info = getPackageManager().getApplicationInfo("com.google.android.apps.maps", 0 );
+	        return true;
+	    } 
+	    catch(PackageManager.NameNotFoundException e)
+	    {
+	        return false;
+	    }
 	}
 	
 	/*
@@ -741,6 +858,49 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	}
 	
 	/*
+	 * Compare to find nearest station from our current GEO location; when found, set that stop as source station
+	 */
+	private void setNearestDepartStation() {
+		
+		List<Stop> stops = null;
+		double diff = 0;
+		double temp = 0;
+		int position = 0;
+		int nearest_position = 0;
+		
+		if ( m_myLatitude == 0 || m_myLongitude == 0) {
+			this.showGeneralErrorDialog("Failed to get location information, please turn on GPS!");
+			return;
+		}
+		
+		try {
+			stops = this.m_caltrainDb.getAllStops();
+		} catch (Exception e) {
+			this.showGeneralErrorDialog("Failed to obtain stop information from database!");
+		}
+		
+		diff = GeoDistance.difference(m_myLatitude, m_myLongitude, stops.get(0).getStopLat(), stops.get(0).getStopLon());
+		for (Stop s: stops) {
+			temp = GeoDistance.difference(m_myLatitude, m_myLongitude, s.getStopLat(), s.getStopLon());
+			if(temp <= diff) {
+				diff = temp;
+				nearest_position = position;
+			}
+			
+			position++;
+		}
+		
+	    m_current_source_position = nearest_position;
+
+	    Spinner source_spinner = (Spinner)this.findViewById(R.id.source_station);
+		if ( source_spinner != null ) source_spinner.setSelection(m_current_source_position);
+		
+	    // Update list routes
+	    populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_SelectedSchedule);
+	    
+	}
+	
+	/*
 	 * Show the help dialog when selected from menu 
 	 */
 	private void showHelpDialog() {
@@ -752,6 +912,20 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	        		+ " bullet train. <br> <font color='#00FFFF'><b>Cyan item:</b></font> " 
 	        		+ " limited train. <br> Everything else is normal local train"
 	        		+ "<br> <font color='#FF00FF'><b>Magenta item:</b></font> next train"));
+	        help.setPositiveButton("OK", null);
+	        help.show();
+		} catch(Exception e) {}
+	}
+	
+	/*
+	 * Pop up a general error with specified mesage 
+	 */
+	private void showGeneralErrorDialog(String message) {
+		
+		try {
+			Builder help = new AlertDialog.Builder(this);
+	        help.setTitle(R.string.app_name + " error");
+	        help.setMessage(message);
 	        help.setPositiveButton("OK", null);
 	        help.show();
 		} catch(Exception e) {}
@@ -814,6 +988,31 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	        routeDetail.show();
 	        
 		} catch(Exception e) {}
+		
+	}
+	
+	/*
+	 * Display the map between the depart and destination stations 
+	 */
+	private void showMap(double source_latitude, double source_longitude, double destination_latitude, double destination_longitude, String dir_flag) {
+		
+		if (!isGoogleMapsInstalled()) {
+			this.showGeneralErrorDialog("Google map is not installed!");
+			return;
+		}
+		
+		String uri = "";
+		if (dir_flag.isEmpty()) {
+			uri = String.format(Locale.ENGLISH, "http://maps.google.com/maps?saddr=%f,%f&daddr=%f,%f", source_latitude, source_longitude, destination_latitude, destination_longitude);
+		}
+		else {
+			uri = String.format(Locale.ENGLISH, "http://maps.google.com/maps?saddr=%f,%f&daddr=%f,%f&dirflg=%s", source_latitude, source_longitude, destination_latitude, destination_longitude, dir_flag);
+		}
+		
+		Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+		intent.setClassName("com.google.android.apps.maps", "com.google.android.maps.MapsActivity");
+		startActivity(intent);
+		
 	}
 	
 }

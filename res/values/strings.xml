@@ -2,13 +2,14 @@
 <resources>
 
     <string name="author">Khoa Quach</string>
-    <string name="author_url">http://github.com/KhoaQuach</string>
+    <string name="author_url">github.com/khoaquach/NorCalTrainTimetable</string>
     <string name="app_name">Caltrain Schedule</string>
     <string name="action_detail">Detail</string>
     <string name="action_help">Help</string>
     <string name="action_about">About</string>
-    <string name="action_closet_station">Closet station</string>
+    <string name="action_nearest_station">Nearest station</string>
     <string name="action_show_map">Show map</string>
+    <string name="action_show_map_to_nearest_station">Show map to nearest station</string>
     <string name="button_reverse_label">&#60;-&#62;</string>
     <string name="station_from_label">From</string>
     <string name="station_to_label">To</string>

@@ -3,8 +3,6 @@ package com.khoa.quach.norcalcaltraintimetable;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import android.net.ParseException;
-
 public class RouteDetail {
 	
     String route_number;

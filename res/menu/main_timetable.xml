@@ -20,7 +20,7 @@
         android:orderInCategory="100"
         android:showAsAction="never"
         android:title="@string/action_about"/>
-
+     
      <item
         android:id="@+id/action_show_map"
         android:orderInCategory="100"
@@ -28,9 +28,15 @@
         android:title="@string/action_show_map"/>
      
      <item
-        android:id="@+id/action_closet_station"
+        android:id="@+id/action_nearest_station"
         android:orderInCategory="100"
         android:showAsAction="never"
-        android:title="@string/action_closet_station"/>
-      
+        android:title="@string/action_nearest_station"/>
+     
+     <item
+        android:id="@+id/action_show_map_to_nearest_station"
+        android:orderInCategory="100"
+        android:showAsAction="never"
+        android:title="@string/action_show_map_to_nearest_station"/>
+     
 </menu>

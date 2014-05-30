@@ -30,6 +30,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 
 	private static Context myContext;
 	List<String> m_stopNameList = new ArrayList<String>();
+	List<Stop> m_stopList = new ArrayList<Stop>();
 	
 	// Initial version
     private static final int DATABASE_VERSION = 1;
@@ -680,6 +681,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 	                			 cursor.getString(10));
 	
 	        return stop;
+	        
     	} catch(Exception e) {
     		throw e;
     	}
@@ -706,10 +708,10 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     		
 	        String selectQuery = "SELECT " + STOPS_NAME + " FROM " 
 	        					+ TABLE_STOPS 
-	        					+ " WHERE stop_code <> '' "
-	        					+ "	AND zone_id <> '' "
-	        					+ " AND platform_code = 'NB' "
-	        					+ " ORDER BY stop_lat DESC";
+	        					+ " WHERE " + STOPS_CODE + " <> '' "
+	        					+ "	AND " + STOPS_ZONE_ID + " <> '' "
+	        					+ " AND " + STOPS_PLATFORM_CODE + " = 'NB' "
+	        					+ " ORDER BY " + STOPS_LAT + " DESC";
 	 
 	        try {
 		        SQLiteDatabase db = this.getReadableDatabase();
@@ -752,39 +754,74 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	
     	}
 
-    	List<Stop> stopList = new ArrayList<Stop>();
-        
-        String selectQuery = "SELECT  * FROM " + TABLE_STOPS;
- 
-        try {
-	        SQLiteDatabase db = this.getReadableDatabase();
-	        Cursor cursor = db.rawQuery(selectQuery, null);
+    	if (m_stopList.isEmpty()) {
+    		
+	    	m_stopList.clear();
+	    	
+	        String selectQuery = "SELECT "
+	        		+ STOPS_ID
+	        		+ ", "
+	        		+ STOPS_CODE
+	        		+ ", "
+	        		+ STOPS_NAME
+	        		+ ", "
+	        		+ STOPS_DESC
+	        		+ ", "
+	        		+ STOPS_LAT
+	        		+ ", "
+	        		+ STOPS_LON
+	        		+ ", "
+	        		+ STOPS_ZONE_ID
+	        		+ ", "
+	        		+ STOPS_URL
+	        		+ ", "
+	        		+ STOPS_LOC_TYPE
+	        		+ ", "
+	        		+ STOPS_PARENT_STATION
+	        		+ ", "
+	        		+ STOPS_PLATFORM_CODE
+	        		+ " FROM " + TABLE_STOPS
+	        		+ " WHERE " + STOPS_CODE + " <> '' "
+        					+ "	AND " + STOPS_ZONE_ID + " <> '' "
+        					+ " AND " + STOPS_PLATFORM_CODE + " = 'NB' "
+        					+ " ORDER BY " + STOPS_LAT + " DESC";
 	 
-	        // looping through all rows and adding to list
-	        if (cursor.moveToFirst()) {
-	            do {
-	                Stop stop = new Stop();
-	                stop.setStopId(cursor.getString(0));
-	                stop.setStopCode(cursor.getString(1));
-	                stop.setStopName(cursor.getString(2));
-	                stop.setStopDesc(cursor.getString(3));
-	                stop.setStopLat(Double.parseDouble(cursor.getString(4)));
-	                stop.setStopLon(Double.parseDouble(cursor.getString(5)));
-	                stop.setStopZoneId(cursor.getString(6));
-	                stop.setStopUrl(cursor.getString(7));
-	                stop.setStopLocationType(cursor.getString(8));
-	                stop.setStopParentStation(cursor.getString(9));
-	                stop.setStopPlatformCode(cursor.getString(10));
-	                
-	                // Adding contact to list
-	                stopList.add(stop);
-	            } while (cursor.moveToNext());
+	        try {
+		        SQLiteDatabase db = this.getReadableDatabase();
+		        Cursor cursor = db.rawQuery(selectQuery, null);
+		        
+		        // looping through all rows and adding to list
+		        if (cursor.moveToFirst()) {
+		            do {
+		            	
+		                Stop stop = new Stop();
+		                stop.setStopId(cursor.getString(0));
+		                stop.setStopCode(cursor.getString(1));
+		                stop.setStopName(cursor.getString(2));
+		                stop.setStopDesc(cursor.getString(3));
+		                stop.setStopLat(Double.parseDouble(cursor.getString(4)));
+		                stop.setStopLon(Double.parseDouble(cursor.getString(5)));
+		                stop.setStopZoneId(cursor.getString(6));
+		                stop.setStopUrl(cursor.getString(7));
+		                stop.setStopLocationType(cursor.getString(8));
+		                stop.setStopParentStation(cursor.getString(9));
+		                stop.setStopPlatformCode(cursor.getString(10));
+		                
+		                // Adding contact to list
+		                m_stopList.add(stop);
+		                
+		            } while (cursor.moveToNext());
+		        }
+	        
+		        return m_stopList;
+		        
+	        } catch(Exception e) {
+	        	throw e;
 	        }
-	 
-	        return stopList;
-        } catch(Exception e) {
-        	throw e;
-        }
+	        
+    	}
+    	
+    	return m_stopList;
     }
     
     /*
