@@ -3,7 +3,7 @@ select
 from
     trips as t
 join
-    stop_times as st on st.trip_id = t.trip_id
+    stop_times as st on st.trip_id = t.trip_id and "%s" <= st.arrival_time and st.arrival_time <= "%s"
 join
     stops as s on s.stop_id = st.stop_id and s.zone_id > 0 and s.platform_code = "%s"
 where

@@ -29,25 +29,14 @@ public class RouteDetail {
         this.route_name = _route_name;
     }
     
+    /*
+     * Calculate the time difference between depart and arrival times 
+     */
     private void calculateAndSetDuration() {
     	
-    	SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss");
-    	
-    	Date d1 = null;
-        Date d2 = null;
-
-        if ( this.route_arrive.isEmpty() || this.route_depart.isEmpty()) {
-        	this.route_duration = "0:00";
-        	return;
-        }
-        
-        try 
-        {	
-            d1 = format.parse(this.route_arrive);
-            d2 = format.parse(this.route_depart);
-
-            // in milliseconds
-            long diff = d1.getTime() - d2.getTime();
+        try {	
+        	
+            long diff = RouteDetail.TimeDifference(route_depart, route_arrive);
 
             long diffMinutes = diff / (60 * 1000);
             if ( 60 <= diffMinutes ) {
@@ -95,7 +84,7 @@ public class RouteDetail {
         this.route_number = _route_number;
     }
      
-    public String getRouteDepart(){
+    public String getRouteFormatedTimeDepart(){
     	
     	String departTime = "";
     	
@@ -110,6 +99,11 @@ public class RouteDetail {
     	 
         return departTime;
     }
+
+    public String getRouteDepart(){
+    	
+    	return route_depart;
+    }
      
     public void setRouteDepart(String _route_depart){
         this.route_depart = _route_depart;
@@ -119,7 +113,7 @@ public class RouteDetail {
         }
     }
      
-    public String getRouteArrive(){
+    public String getRouteFormatedTimeArrive(){
     	
     	String arriveTime = "";
     	
@@ -133,6 +127,11 @@ public class RouteDetail {
 		}
     	
         return arriveTime;
+    }
+
+    public String getRouteArrive(){
+    	
+    	return route_arrive;
     }
      
     public void setRouteArrive(String _route_arrive){
@@ -165,6 +164,38 @@ public class RouteDetail {
      
     public void setRouteTransfer(TransferDetail _route_transfer){
         this.route_transfer = _route_transfer;
+    }
+    
+    /*
+     * Calculate the difference between two input parameters
+     */
+    public static long TimeDifference(String depart_time, String arrival_time) {
+    
+    	SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss");
+    	
+    	Date d1 = null;
+        Date d2 = null;
+        long diff = 0;
+        
+        if ( depart_time.isEmpty() || arrival_time.isEmpty()) {
+        	return 0;
+        }
+        
+        try {
+        
+            d1 = format.parse(arrival_time);
+            d2 = format.parse(depart_time);
+
+            // in milliseconds
+            diff = d1.getTime() - d2.getTime();
+            
+        }
+        catch (Exception e) 
+        {
+            // TODO: handle exception
+        } 
+        
+    	return diff;
     }
     
 }

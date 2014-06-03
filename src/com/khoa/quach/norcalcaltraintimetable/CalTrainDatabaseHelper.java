@@ -7,15 +7,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.GregorianCalendar;
-import java.util.Hashtable;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import android.content.ContentValues;
@@ -256,14 +252,14 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     /*
      * 
      */
-    private String BuildGetTransferDetailQueryStatement(String depart_trip_number, String destination_trip_number, String direction) {
+    private String BuildGetTransferDetailQueryStatement(String depart_time, String depart_trip_number, String arrival_time, String destination_trip_number, String direction) {
     	
     	String queryStatement = "", contents = "";
     	String order = direction.equals("NB")?"ASC":"DESC";
     	
     	contents = getFileContents("queries/transfer.txt");
     	
-	   	queryStatement = String.format(contents, direction, depart_trip_number, destination_trip_number, order);
+	   	queryStatement = String.format(contents, depart_time, arrival_time, direction, depart_trip_number, destination_trip_number, order);
     	
     	return queryStatement;
     }
@@ -1000,17 +996,22 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			        	    test_entry = routeTempDetail.get(route_id);
 			        	    
 			        	    if ((!test_entry.getDirectRoute()) && (!test_entry.getNeedTransfer())) {
-			        	    	TransferDetail transfer = this.getTransferDetail(test_entry.getRouteNumber(), routeDetail.getRouteNumber(), direction);
+			        	    	TransferDetail transfer = this.getTransferDetail(test_entry.getRouteDepart(), test_entry.getRouteNumber(), routeDetail.getRouteArrive(), routeDetail.getRouteNumber(), direction);
 			        	    	
 			        	    	if (transfer != null) {
+			        	    		
+			        	    		routeDetail.setRouteNumber(test_entry.getRouteNumber());
+						    		routeDetail.setRouteDepart(test_entry.getRouteDepart());
 			        	    		routeDetail.setRouteTransfer(transfer);
 			        	    		detailList.add(routeDetail);
+			        	    		
+			        	    		last_position = position;
+			        	    		
 			        	    		break;
+			        	    		
 			        	    	}
 			        	    }
 			        	}
-			        	
-			        	last_position = position;
 			        }
 			        else {
 			        	if (routeDetail.getDirectRoute()) {
@@ -1054,11 +1055,11 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     /*
      * Obtain the transfer station detail
      */
-    public TransferDetail getTransferDetail(String source_station_name, String destination_station_name, String direction) throws Exception {
+    public TransferDetail getTransferDetail(String depart_time, String depart_route_id, String arrival_time, String destination_route_id, String direction) throws Exception {
     
     	TransferDetail new_transfer = null;
     	
-    	String selectQuery = BuildGetTransferDetailQueryStatement(source_station_name, destination_station_name, direction);
+    	String selectQuery = BuildGetTransferDetailQueryStatement(depart_time, depart_route_id, arrival_time, destination_route_id, direction);
     	
 		try {
 			SQLiteDatabase db = this.getReadableDatabase();

@@ -109,7 +109,9 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 		
 		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_SelectedSchedule);
 		
-		m_locationManager.requestLocationUpdates(m_locationProvider, 400, 1, this);
+		if (m_locationProvider != null) {
+			m_locationManager.requestLocationUpdates(m_locationProvider, 400, 1, this);
+		}
 	}
 	
 	@Override
@@ -328,11 +330,11 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 			for (int i = 0; i < menuItems.length; i++) {
 				switch(i) {
 				case 0:
-					menu.add(Menu.NONE, i, i, menuItems[i] + " " + m_routes.get(info.position).getRouteDepart() + " alarm");
+					menu.add(Menu.NONE, i, i, menuItems[i] + " " + m_routes.get(info.position).getRouteFormatedTimeDepart() + " alarm");
 					break;
 				case 1:
 					if (!m_routes.get(info.position).getNeedTransfer()) {
-						menu.add(Menu.NONE, i, i, menuItems[i] + " " + m_routes.get(info.position).getRouteArrive() + " alarm");
+						menu.add(Menu.NONE, i, i, menuItems[i] + " " + m_routes.get(info.position).getRouteFormatedTimeArrive() + " alarm");
 					}
 					break;
 				}
@@ -351,10 +353,10 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	  
 		switch(menuItemIndex) {
 		case 0:
-			addAReminderAlarm("depart", m_routes.get(info.position).getRouteDepart());
+			addAReminderAlarm("depart", m_routes.get(info.position).getRouteFormatedTimeDepart());
 			break;
 		case 1:
-			addAReminderAlarm("arrive", m_routes.get(info.position).getRouteArrive());
+			addAReminderAlarm("arrive", m_routes.get(info.position).getRouteFormatedTimeArrive());
 			break;
 		}
       
@@ -466,13 +468,14 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	    
 	    Criteria criteria = new Criteria();
 	    m_locationProvider = m_locationManager.getBestProvider(criteria, false);
-	    Location location = m_locationManager.getLastKnownLocation(m_locationProvider);
+	    if (m_locationProvider != null) {
+	    	Location location = m_locationManager.getLastKnownLocation(m_locationProvider);
 
-	    // Initialize the location fields
-	    if (location != null) {
-	    	onLocationChanged(location);
+	    	// Initialize the location fields
+	    	if (location != null) {
+	    		onLocationChanged(location);
+	    	}
 	    }
-	    
 	}
 	
 	/*
@@ -650,7 +653,7 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
         				
         				// Build the message that includes: from station, transfer details, to station
         				details.append("From " + source_station + ":\n");
-        				details.append("Route: " + m_routes.get(position).getRouteNumber() + "; Depart: " + m_routes.get(position).getRouteDepart() + "\n\n");
+        				details.append("Route: " + m_routes.get(position).getRouteNumber() + "; Depart: " + m_routes.get(position).getRouteFormatedTimeDepart() + "\n\n");
         				
         				details.append("Transfer detail:\n");
         				
@@ -681,7 +684,7 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
             	registerForContextMenu(routeDetailList);
             	
 	        	// Update to visible position that close to current time
-	        	SimpleDateFormat departFormat = new SimpleDateFormat("hh:mm a");
+	        	SimpleDateFormat departFormat = new SimpleDateFormat("hh:mm:ss");
 	        	SimpleDateFormat nowFormat = new SimpleDateFormat("HH:mm:ss");
 	
 	        	Date depart = null;
