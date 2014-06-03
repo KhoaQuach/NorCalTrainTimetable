@@ -59,8 +59,8 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
     MenuItem m_itemDetail;
     LocationManager m_locationManager;
     String m_locationProvider;
-    double m_myLatitude = 0;
-    double m_myLongitude = 0;
+    double m_myLatitude = 0.00;
+    double m_myLongitude = 0.00;
     ArrayList<RouteDetail> m_routes = new ArrayList<RouteDetail>();
     
     ScheduleEnum m_SelectedSchedule = ScheduleEnum.WEEKDAY;
@@ -110,6 +110,21 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_SelectedSchedule);
 		
 		m_locationManager.requestLocationUpdates(m_locationProvider, 400, 1, this);
+	}
+	
+	@Override
+	public void onStop() {
+		// Save state
+		SharedPreferences settings = getApplicationContext().getSharedPreferences(PREFS_NAME, 0); 
+		SharedPreferences.Editor editor = settings.edit();
+		
+		// Save source station position
+		editor.putInt(PREFS_SOURCE_SELECTION, m_current_source_position); 
+		
+		// Save destination station position
+		editor.putInt(PREFS_DESTINATION_SELECTION, m_current_destination_position); 
+		
+		editor.commit();
 	}
 	
 	@Override
@@ -169,7 +184,7 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 				source_stop = m_caltrainDb.getStopByName(this.m_stationNames.get(this.m_current_source_position));
 				destination_stop = m_caltrainDb.getStopByName(this.m_stationNames.get(this.m_current_destination_position));
 			} catch (Exception e) {
-				showGeneralErrorDialog("Error get location information from database!");
+				showGeneralErrorDialog("", "Error get location information from database!");
 				return false;
 			}
 			
@@ -189,7 +204,7 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 			try {
 				source_stop = m_caltrainDb.getStopByName(this.m_stationNames.get(this.m_current_source_position));
 			} catch (Exception e) {
-				showGeneralErrorDialog("Error get location information from database!");
+				showGeneralErrorDialog("database error", "Error get location information from database!");
 				return false;
 			}
 			
@@ -457,9 +472,6 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	    if (location != null) {
 	    	onLocationChanged(location);
 	    }
-	    else {
-	    	this.showGeneralErrorDialog("Failed to get current location, please turn on GPS in order to set to nearest depart station!");
-	    }
 	    
 	}
 	
@@ -640,7 +652,9 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
         				details.append("From " + source_station + ":\n");
         				details.append("Route: " + m_routes.get(position).getRouteNumber() + "; Depart: " + m_routes.get(position).getRouteDepart() + "\n\n");
         				
-        				details.append("Transfer detail:");
+        				details.append("Transfer detail:\n");
+        				
+        				details.append("At station: " + m_routes.get(position).getRouteTransfer().getStopName() + "; Route: " + m_routes.get(position).getRouteTransfer().getRouteNumber() + "; Depart: " + m_routes.get(position).getRouteTransfer().getRouteArrive() + "\n\n");
         				
         				transferDetail.setMessage(details.toString());
         				
@@ -682,7 +696,15 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	        	
 	        	for (RouteDetail r: m_routes) {
 	        		
-	        		depart = departFormat.parse(r.getRouteDepart());
+	        		if (r.getDirectRoute()) {
+	        			depart = departFormat.parse(r.getRouteDepart());
+	        		}
+	        		else if ((!r.getDirectRoute()) && (!r.getNeedTransfer())) {
+	        			depart = departFormat.parse(r.getRouteDepart());
+	        		}
+	        		else if ((!r.getDirectRoute()) && (r.getNeedTransfer())) {
+	        			depart = departFormat.parse(r.getRouteArrive());
+	        		}
 	        		
 	        		if ( 0 <= (depart.getTime() - now.getTime()) ) {
 	        			routeDetailList.setSelection(position);
@@ -787,12 +809,6 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 			public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) { 
 				
 				m_current_source_position = i;
-				
-				// Save state
-        		SharedPreferences settings = getApplicationContext().getSharedPreferences(PREFS_NAME, 0); 
-        		SharedPreferences.Editor editor = settings.edit();
-        		editor.putInt(PREFS_SOURCE_SELECTION, m_current_source_position); 
-        		editor.commit();
         		
         		if (m_current_source_position != m_current_destination_position) {
         			// Re-fresh data in the route list view
@@ -812,12 +828,6 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 			public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) { 
 				
 				m_current_destination_position = i;
-		     
-				// Save state
-        		SharedPreferences settings = getApplicationContext().getSharedPreferences(PREFS_NAME, 0); 
-        		SharedPreferences.Editor editor = settings.edit();
-        		editor.putInt(PREFS_DESTINATION_SELECTION, m_current_destination_position); 
-        		editor.commit();
         		
         		if ( m_current_source_position != m_current_destination_position ) {
         			// Re-fresh data in the route list view
@@ -863,20 +873,20 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	private void setNearestDepartStation() {
 		
 		List<Stop> stops = null;
-		double diff = 0;
-		double temp = 0;
+		double diff = 0.00;
+		double temp = 0.00;
 		int position = 0;
 		int nearest_position = 0;
 		
-		if ( m_myLatitude == 0 || m_myLongitude == 0) {
-			this.showGeneralErrorDialog("Failed to get location information, please turn on GPS!");
+		if ( m_myLatitude == 0.00 || m_myLongitude == 0.00) {
+			this.showGeneralErrorDialog("Location error", "Failed to get location information, please turn on GPS!");
 			return;
 		}
 		
 		try {
 			stops = this.m_caltrainDb.getAllStops();
 		} catch (Exception e) {
-			this.showGeneralErrorDialog("Failed to obtain stop information from database!");
+			this.showGeneralErrorDialog("database error", "Failed to obtain stop information from database!");
 		}
 		
 		diff = GeoDistance.difference(m_myLatitude, m_myLongitude, stops.get(0).getStopLat(), stops.get(0).getStopLon());
@@ -920,11 +930,11 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	/*
 	 * Pop up a general error with specified mesage 
 	 */
-	private void showGeneralErrorDialog(String message) {
+	private void showGeneralErrorDialog(String title, String message) {
 		
 		try {
 			Builder help = new AlertDialog.Builder(this);
-	        help.setTitle(R.string.app_name + " error");
+	        help.setTitle(R.string.app_name + ": " + title);
 	        help.setMessage(message);
 	        help.setPositiveButton("OK", null);
 	        help.show();
@@ -997,7 +1007,7 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	private void showMap(double source_latitude, double source_longitude, double destination_latitude, double destination_longitude, String dir_flag) {
 		
 		if (!isGoogleMapsInstalled()) {
-			this.showGeneralErrorDialog("Google map is not installed!");
+			this.showGeneralErrorDialog("Google map error", "Google map is not installed!");
 			return;
 		}
 		

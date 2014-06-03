@@ -254,6 +254,21 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     }
     
     /*
+     * 
+     */
+    private String BuildGetTransferDetailQueryStatement(String depart_trip_number, String destination_trip_number, String direction) {
+    	
+    	String queryStatement = "", contents = "";
+    	String order = direction.equals("NB")?"ASC":"DESC";
+    	
+    	contents = getFileContents("queries/transfer.txt");
+    	
+	   	queryStatement = String.format(contents, direction, depart_trip_number, destination_trip_number, order);
+    	
+    	return queryStatement;
+    }
+    
+    /*
      * Build appropriate query statement to get data from database
      */
     private String BuildGetRouteQueryStatement(String source_station_name, String destination_station_name, String direction, ScheduleEnum selectedSchedule) {
@@ -863,8 +878,6 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			if ( cursor.moveToFirst() ) {
 				
 			    do { 
-			    	
-			    	
 			    	detailList.add(cursor.getString(0));
 			    	
 			    } while ( cursor.moveToNext() );
@@ -919,6 +932,8 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			    		newRouteDetail.setRouteDepart(cursor.getString(2).trim());
 			    		newRouteDetail.setRouteName(cursor.getString(3).trim());
 			    		newRouteDetail.setRouteArrive("Transfer(s)");
+			    		newRouteDetail.setDirectRoute(false);
+			    		newRouteDetail.setNeedTransfer(false);
 			    		
 			    		// Save it in a temporary hashtable object
 			    		routeTempDetail.put(route_number, newRouteDetail);
@@ -935,28 +950,75 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			    		newRouteDetail = routeTempDetail.get(route_number);
 			    		
 			    		if ( (newRouteDetail != null) && (route_name.equals(newRouteDetail.getRouteName()))) {
-			    			routeTempDetail.get(route_number).setRouteArrive(cursor.getString(2).trim());
-			    			routeTempDetail.get(route_number).setNeedTransfer(false);
+			    			newRouteDetail.setRouteArrive(cursor.getString(2).trim());
+			    			newRouteDetail.setDirectRoute(true);
+			    			newRouteDetail.setNeedTransfer(false);
+			    		}
+			    		else {
+			    			if (newRouteDetail == null) {
+			    				
+			    				newRouteDetail = new RouteDetail();
+					    		
+					    		//
+					    		// The row data belong to destination station, save them into a hashable list
+					    		//
+					    		route_number = cursor.getString(1).trim();
+					    		newRouteDetail.setRouteNumber(route_number);
+					    		newRouteDetail.setRouteArrive(cursor.getString(2).trim());
+					    		newRouteDetail.setRouteName(cursor.getString(3).trim());
+					    		newRouteDetail.setRouteDepart("Transfer(s)");
+					    		newRouteDetail.setDirectRoute(false);
+					    		newRouteDetail.setNeedTransfer(true);
+			    				
+			    				// Save it in a temporary hashtable object
+					    		routeTempDetail.put(route_number, newRouteDetail);
+			    			}
 			    		}
 			    		
 			    	}
 			    	
 			    } while ( cursor.moveToNext() );
 			    
+			    int position = 0;
+			    int last_position = 0;
+			    
 			    // Now add items into the list in order
 			    for (Map.Entry<String, RouteDetail> entry : routeTempDetail.entrySet()) {
 			    	
 			        RouteDetail routeDetail = entry.getValue();
 			        if (routeDetail.getNeedTransfer()) {
+			        	
+			        	List<String> keyList = new ArrayList<String>(routeTempDetail.keySet());
+			        	
 			        	// Determine if it has any transfer routes,
 			        	// if it does, build the transfer route list and add to detail list,
 			        	// otherwise, just ignore it
-			        	detailList.add(routeDetail);
+			        	
+			        	RouteDetail test_entry = null;
+			        	for( int i = position; i > last_position ; i--) {
+			        		String route_id = keyList.get(i);
+			        	    test_entry = routeTempDetail.get(route_id);
+			        	    
+			        	    if ((!test_entry.getDirectRoute()) && (!test_entry.getNeedTransfer())) {
+			        	    	TransferDetail transfer = this.getTransferDetail(test_entry.getRouteNumber(), routeDetail.getRouteNumber(), direction);
+			        	    	
+			        	    	if (transfer != null) {
+			        	    		routeDetail.setRouteTransfer(transfer);
+			        	    		detailList.add(routeDetail);
+			        	    		break;
+			        	    	}
+			        	    }
+			        	}
+			        	
+			        	last_position = position;
 			        }
 			        else {
-			        	detailList.add(routeDetail);
+			        	if (routeDetail.getDirectRoute()) {
+			        		detailList.add(routeDetail);
+			        	}
 			        }
-			        
+			    
+			        position++;
 			    }
 			}
 			
@@ -989,6 +1051,32 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	}
     }
  
+    /*
+     * Obtain the transfer station detail
+     */
+    public TransferDetail getTransferDetail(String source_station_name, String destination_station_name, String direction) throws Exception {
+    
+    	TransferDetail new_transfer = null;
+    	
+    	String selectQuery = BuildGetTransferDetailQueryStatement(source_station_name, destination_station_name, direction);
+    	
+		try {
+			SQLiteDatabase db = this.getReadableDatabase();
+			Cursor cursor = db.rawQuery(selectQuery, null);
+			
+			if ( cursor.moveToFirst() ) {
+				
+				new_transfer = new TransferDetail(TrimWhiteSpacesOrDoubleQuotes(cursor.getString(0)), cursor.getString(1), cursor.getString(2));
+			    
+			}
+			
+		} catch(Exception e) {
+			throw e;
+		}
+
+    	return new_transfer;
+    }
+    
     /*
      * Check if table exists
      */

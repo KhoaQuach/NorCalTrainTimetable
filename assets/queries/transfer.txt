@@ -1,0 +1,16 @@
+select
+    s.stop_name, t.trip_short_name, st.arrival_time
+from
+    trips as t
+join
+    stop_times as st on st.trip_id = t.trip_id
+join
+    stops as s on s.stop_id = st.stop_id and s.zone_id > 0 and s.platform_code = "%s"
+where
+    (t.trip_short_name = "%s" or t.trip_short_name = "%s")
+
+group by s.stop_name
+
+having count(s.stop_name) = 2
+
+order by st.stop_sequence %s

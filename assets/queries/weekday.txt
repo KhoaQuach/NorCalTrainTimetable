@@ -6,10 +6,10 @@ join stop_times st on st.trip_id = t.trip_id
 join stops s on s.stop_id = st.stop_id and s.platform_code = "%s" and zone_id > 0
 left join calendar_dates cd on cd.service_id = c.service_id and cd.date = %s
 where
-    c.monday = 1 and c.tuesday = 1 and c.wednesday = 1 and c.thursday = 1 and c.friday = 1
+    ((c.monday = 1 and c.tuesday = 1 and c.wednesday = 1 and c.thursday = 1 and c.friday = 1) or (cd.exception_type = 1))
     and c.start_date <= %s
     and (c.end_date is null or %s <= c.end_date)
-    and cd.service_id is null
+    and ((cd.service_id is null) or (cd.exception_type <> 2))
     and (s.stop_name like "%s%%" or s.stop_name like "%s%%")
 order by st.arrival_time
 

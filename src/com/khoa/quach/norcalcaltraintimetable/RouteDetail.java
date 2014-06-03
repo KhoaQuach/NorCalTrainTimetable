@@ -10,7 +10,9 @@ public class RouteDetail {
     String route_arrive;
     String route_duration;
     String route_name;
-    boolean need_transfer = true;
+    boolean need_transfer = false;
+    boolean direct_route = false;
+    TransferDetail route_transfer = null;
     
     // Empty constructor
     public RouteDetail(){}
@@ -67,6 +69,15 @@ public class RouteDetail {
             // TODO: handle exception
         } 
     }
+    
+    public boolean getDirectRoute() {
+    	return direct_route;
+    }
+    
+    public void setDirectRoute(boolean _direct_route) {
+    	direct_route = _direct_route;
+    }
+    
     
     public boolean getNeedTransfer() {
     	return need_transfer;
@@ -146,6 +157,14 @@ public class RouteDetail {
      
     public void setRouteName(String _route_name){
         this.route_name = _route_name;
+    }
+    
+    public TransferDetail getRouteTransfer(){
+        return this.route_transfer;
+    }
+     
+    public void setRouteTransfer(TransferDetail _route_transfer){
+        this.route_transfer = _route_transfer;
     }
     
 }

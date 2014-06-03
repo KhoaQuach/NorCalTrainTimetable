@@ -18,3 +18,12 @@ Require app(s):
 Note: this app is utilized Caltrain real-time status by connecting to
 Caltrain web site to obtain the data; at this moment, the data has yet been
 available, so if you try to get real-time status, it would show nothing.
+
+Thanks,
+1) Caltrain gtfs information; I use these information to build the database for this app.
+2) Caltrain real-time information: well it's unavailable yet but thanks anyway.
+3) Google search: I wrote this app by googling a lot for Android and Java tutorials.
+
+All rights belong to their respective owners.
+
+-Khoa Quach
