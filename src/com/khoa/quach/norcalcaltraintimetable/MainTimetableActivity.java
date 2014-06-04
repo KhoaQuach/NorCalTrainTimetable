@@ -83,7 +83,7 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 		m_caltrainDb = new CalTrainDatabaseHelper(this);
 		m_caltrainDb.SetupDatabaseTables();
 		
-		populateDataToDisplay();
+		populateDataToRouteSelection();
 		
 		retrieveSelections();
 		
@@ -95,7 +95,7 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 	@Override
 	protected void onPause() {
 	    super.onPause();
-	    m_locationManager.removeUpdates(this);
+	    if (m_locationManager != null) m_locationManager.removeUpdates(this);
 	}
 	
 	@Override
@@ -107,15 +107,20 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 			m_caltrainDb.SetupDatabaseTables();
 		}
 		
-		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_SelectedSchedule);
+		//populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_SelectedSchedule);
 		
 		if (m_locationProvider != null) {
 			m_locationManager.requestLocationUpdates(m_locationProvider, 400, 1, this);
 		}
+		
+		populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_SelectedSchedule);
+		
 	}
 	
 	@Override
 	public void onStop() {
+		super.onStop();
+		
 		// Save state
 		SharedPreferences settings = getApplicationContext().getSharedPreferences(PREFS_NAME, 0); 
 		SharedPreferences.Editor editor = settings.edit();
@@ -599,18 +604,6 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
 		status = response.toString();
 		
 		return status;
-	}
-	
-	/*
-	 * Getting data from database and populate them into UI
-	 */
-	private void populateDataToDisplay() {
-		
-		populateDataToRouteSelection();
-		
-		if (m_current_source_position != m_current_destination_position) {
-			populateDataToRouteDetailList(m_current_source_position, m_current_destination_position, m_SelectedSchedule);
-		}
 	}
 
 	/*

@@ -1000,7 +1000,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			        	    	
 			        	    	TransferDetail transfer = this.getTransferDetail(test_entry.getRouteDepart(), test_entry.getRouteNumber(), routeDetail.getRouteArrive(), routeDetail.getRouteNumber(), direction);
 			        	    	
-			        	    	if ((transfer != null) && (routeDetail.TimeDifference(transfer.getArrivalTime(), transfer.getDepartTime()) <= 60*1000*30)) {
+			        	    	if ((transfer != null) && (60*1000*30 <= routeDetail.TimeDifference(transfer.getArrivalTime(), transfer.getDepartTime()))) {
 			        	    		break;
 			        	    	}
 			        	    	
