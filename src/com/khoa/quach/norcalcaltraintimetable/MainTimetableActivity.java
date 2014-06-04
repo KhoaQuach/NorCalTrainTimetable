@@ -653,11 +653,23 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
         				
         				// Build the message that includes: from station, transfer details, to station
         				details.append("From " + source_station + ":\n");
-        				details.append("Route: " + m_routes.get(position).getRouteNumber() + "; Depart: " + m_routes.get(position).getRouteFormatedTimeDepart() + "\n\n");
+        				details.append("Depart: " + m_routes.get(position).getRouteFormatedTimeDepart() + "\n\n");
         				
         				details.append("Transfer detail:\n");
         				
-        				details.append("At station: " + m_routes.get(position).getRouteTransfer().getStopName() + "; Route: " + m_routes.get(position).getRouteTransfer().getRouteNumber() + "; Depart: " + m_routes.get(position).getRouteTransfer().getRouteArrive() + "\n\n");
+        				details.append("At station:\n" 
+        						+ m_routes.get(position).getRouteTransfer().getStopName() 
+        						+ "\nArrive: " 
+        						+ m_routes.get(position).getRouteTransfer().getFormatedArrivalTime()
+        						+ "; route: "
+        						+ m_routes.get(position).getRouteTransfer().getArrivalRouteNumber()
+        						+ "\nDepart: " + m_routes.get(position).getRouteTransfer().getFormatedDepartTime()
+        						+ "; route: "
+        						+ m_routes.get(position).getRouteTransfer().getDepartRouteNumber()
+        						+ "\n\n");
+        				
+        				details.append("To " + destination_station + ":\n");
+        				details.append("Arrive: " + m_routes.get(position).getRouteFormatedTimeArrive() + "\n\n");
         				
         				transferDetail.setMessage(details.toString());
         				

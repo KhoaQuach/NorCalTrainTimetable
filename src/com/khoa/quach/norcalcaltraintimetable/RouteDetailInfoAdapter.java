@@ -54,7 +54,13 @@ public class RouteDetailInfoAdapter extends ArrayAdapter<RouteDetail> {
         TextView routeDurationText = (TextView) routeDetailView.findViewById(R.id.route_duration);
          
         routeNumberText.setText(routeDetail.getRouteNumber());
-        routeDepartText.setText(routeDetail.getRouteFormatedTimeDepart());
+        if (routeDetail.getNeedTransfer()) {
+        	routeDepartText.setText(routeDetail.getRouteFormatedTimeDepart()
+        			+ "\nNeed transfer");
+        }
+        else {
+        	routeDepartText.setText(routeDetail.getRouteFormatedTimeDepart());
+        }
         routeArriveText.setText(routeDetail.getRouteFormatedTimeArrive());
         routeDurationText.setText(routeDetail.getRouteDuration());
          

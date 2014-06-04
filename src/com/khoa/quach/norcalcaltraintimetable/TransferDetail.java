@@ -6,46 +6,88 @@ import java.util.Date;
 public class TransferDetail {
 
 	String stop_name;
-    String route_number;
-    String route_arrive;
+    String arrival_route_number;
+    String arrival_time;
+    String depart_route_number;
+    String depart_time;
     
     // Empty constructor
     public TransferDetail(){}
     
     public TransferDetail(String _stop_name, 
-    		    String _route_number, 
-    		    String _route_arrive) {
+    		    String _arrival_route_number, 
+    		    String _arrival_time,
+    		    String _depart_route_number,
+    		    String _depart_time) {
     	this.stop_name = _stop_name;
-        this.route_number = _route_number;
-        this.route_arrive = _route_arrive;
+        this.arrival_route_number = _arrival_route_number;
+        this.arrival_time = _arrival_time;
+        this.depart_route_number = _depart_route_number;
+        this.depart_time = _depart_time;
     }
     
-    public String getRouteNumber(){
-        return this.route_number;
+    public String getArrivalRouteNumber(){
+        return this.arrival_route_number;
     }
      
-    public void setRouteNumber(String _route_number){
-        this.route_number = _route_number;
+    public void setArrivalRouteNumber(String _route_number){
+        this.arrival_route_number = _route_number;
+    }
+    
+    public String getDepartRouteNumber(){
+        return this.depart_route_number;
     }
      
-    public String getRouteArrive(){
+    public void setDepartRouteNumber(String _route_number){
+        this.depart_route_number = _route_number;
+    }
+    
+    public String getArrivalTime(){
+        return arrival_time;
+    }
+     
+    public String getFormatedArrivalTime(){
     	
-    	String arriveTime = "";
+    	String arrivalTime = "";
     	
     	try {
         	// Convert to 12 hour format
         	SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-            Date arrive = sdf.parse(this.route_arrive);
-            arriveTime = new SimpleDateFormat("hh:mm a").format(arrive);
+            Date arrive = sdf.parse(this.arrival_time);
+            arrivalTime = new SimpleDateFormat("hh:mm a").format(arrive);
     	} catch (java.text.ParseException e) {
-			arriveTime = route_arrive;
+			arrivalTime = arrival_time;
 		}
     	
-        return arriveTime;
+        return arrivalTime;
+    }
+
+    public void setArrivalTime(String _arrival_time){
+        this.arrival_time = _arrival_time;
+    }
+    
+    public String getDepartTime(){
+        return depart_time;
     }
      
-    public void setRouteArrive(String _route_arrive){
-        this.route_arrive = _route_arrive;
+    public String getFormatedDepartTime(){
+    	
+    	String departTime = "";
+    	
+    	try {
+        	// Convert to 12 hour format
+        	SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+            Date depart = sdf.parse(this.depart_time);
+            departTime = new SimpleDateFormat("hh:mm a").format(depart);
+    	} catch (java.text.ParseException e) {
+			departTime = depart_time;
+		}
+    	
+        return departTime;
+    }
+
+    public void setDepartTime(String _depart_time){
+        this.depart_time = _depart_time;
     }
     
     public String getStopName(){

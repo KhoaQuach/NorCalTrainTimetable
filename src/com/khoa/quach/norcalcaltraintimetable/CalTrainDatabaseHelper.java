@@ -250,7 +250,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     }
     
     /*
-     * 
+     * Build sql query to return any transfer between two stations, order by the nearest depart station to farthest
      */
     private String BuildGetTransferDetailQueryStatement(String depart_time, String depart_trip_number, String arrival_time, String destination_trip_number, String direction) {
     	
@@ -259,7 +259,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	
     	contents = getFileContents("queries/transfer.txt");
     	
-	   	queryStatement = String.format(contents, depart_time, arrival_time, direction, depart_trip_number, destination_trip_number, order);
+	   	queryStatement = String.format(contents, depart_time, arrival_time, direction, destination_trip_number, depart_time, arrival_time, direction, depart_trip_number, order);
     	
     	return queryStatement;
     }
@@ -976,7 +976,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			    } while ( cursor.moveToNext() );
 			    
 			    int position = 0;
-			    int last_position = 0;
+			    int least_position = 0;
 			    
 			    // Now add items into the list in order
 			    for (Map.Entry<String, RouteDetail> entry : routeTempDetail.entrySet()) {
@@ -991,13 +991,20 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			        	// otherwise, just ignore it
 			        	
 			        	RouteDetail test_entry = null;
-			        	for( int i = position; i > last_position ; i--) {
+			        	for( int i = position; i >= least_position; i--) {
+			        		
 			        		String route_id = keyList.get(i);
 			        	    test_entry = routeTempDetail.get(route_id);
-			        	    
-			        	    if ((!test_entry.getDirectRoute()) && (!test_entry.getNeedTransfer())) {
+			        	   
+			        	    if (!test_entry.getNeedTransfer()) {
+			        	    	
 			        	    	TransferDetail transfer = this.getTransferDetail(test_entry.getRouteDepart(), test_entry.getRouteNumber(), routeDetail.getRouteArrive(), routeDetail.getRouteNumber(), direction);
 			        	    	
+			        	    	if ((transfer != null) && (routeDetail.TimeDifference(transfer.getArrivalTime(), transfer.getDepartTime()) <= 60*1000*30)) {
+			        	    		break;
+			        	    	}
+			        	    	
+			        	    	// Only do transfer if less than 30 minutes
 			        	    	if (transfer != null) {
 			        	    		
 			        	    		routeDetail.setRouteNumber(test_entry.getRouteNumber());
@@ -1005,12 +1012,14 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			        	    		routeDetail.setRouteTransfer(transfer);
 			        	    		detailList.add(routeDetail);
 			        	    		
-			        	    		last_position = position;
+			        	    		least_position = i;
 			        	    		
 			        	    		break;
 			        	    		
 			        	    	}
+			        	    	
 			        	    }
+			       
 			        	}
 			        }
 			        else {
@@ -1067,7 +1076,11 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 			
 			if ( cursor.moveToFirst() ) {
 				
-				new_transfer = new TransferDetail(TrimWhiteSpacesOrDoubleQuotes(cursor.getString(0)), cursor.getString(1), cursor.getString(2));
+				new_transfer = new TransferDetail(TrimWhiteSpacesOrDoubleQuotes(cursor.getString(0)), 
+						cursor.getString(1).trim(), 
+						cursor.getString(2).trim(),
+						cursor.getString(3).trim(),
+						cursor.getString(4).trim());
 			    
 			}
 			
