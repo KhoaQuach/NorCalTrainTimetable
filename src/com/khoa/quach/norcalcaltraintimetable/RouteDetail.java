@@ -5,29 +5,23 @@ import java.util.Date;
 
 public class RouteDetail {
 	
+	String depart_station_name;
+	String arrival_station_name;
     String route_number;
     String route_depart;
     String route_arrive;
     String route_duration;
     String route_name;
+    String route_direction;
+    String route_start_date;
+    String route_end_date;
+    String route_service_id;
     boolean need_transfer = false;
     boolean direct_route = false;
     TransferDetail route_transfer = null;
     
     // Empty constructor
     public RouteDetail(){}
-    
-    public RouteDetail(String _route_number, 
-    		    String _route_depart, 
-    		    String _route_arrive,
-    		    String _route_duration,
-    		    String _route_name){
-    	this.route_number = _route_number;
-        this.route_depart = _route_depart;
-        this.route_arrive = _route_arrive;
-        this.route_duration = _route_duration;
-        this.route_name = _route_name;
-    }
     
     /*
      * Calculate the time difference between depart and arrival times 
@@ -59,6 +53,22 @@ public class RouteDetail {
         } 
     }
     
+    public String getArrivalStationName() {
+    	return arrival_station_name;
+    }
+    
+    public void setArrivalStationName(String station_name) {
+    	arrival_station_name = station_name;
+    }
+    
+    public String getDepartStationName() {
+    	return depart_station_name;
+    }
+    
+    public void setDepartStationName(String station_name) {
+    	depart_station_name = station_name;
+    }
+    
     public boolean getDirectRoute() {
     	return direct_route;
     }
@@ -74,6 +84,14 @@ public class RouteDetail {
     
     public void setNeedTransfer(boolean _need_transfer) {
     	need_transfer = _need_transfer;
+    }
+    
+    public String getRouteDirection() {
+    	return route_direction;
+    }
+    
+    public void setRouteDirection(String _direction) {
+    	route_direction = _direction;
     }
     
     public String getRouteNumber(){
@@ -156,6 +174,30 @@ public class RouteDetail {
      
     public void setRouteName(String _route_name){
         this.route_name = _route_name;
+    }
+    
+    public String getRouteEndDate(){
+        return this.route_end_date;
+    }
+     
+    public void setRouteEndDate(String _date){
+        route_end_date = _date;
+    }
+    
+    public String getRouteServiceId(){
+        return this.route_service_id;
+    }
+     
+    public void setRouteServiceId(String _service_id){
+        route_service_id = _service_id;
+    }
+    
+    public String getRouteStartDate(){
+        return this.route_start_date;
+    }
+     
+    public void setRouteStartDate(String _date){
+        route_start_date = _date;
     }
     
     public TransferDetail getRouteTransfer(){

@@ -39,6 +39,36 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     private boolean m_InvalidDatabaseFile = false;
 	private boolean m_IsUpgraded = false;
 	
+	
+	//
+	// Following table is the aggregation data from caltrain gtfs tables; it's
+	// created with purpose to speed up the query to display different route
+	// to UI
+	//
+	private static final String TABLE_CALTRAIN_SCHEDULES	= "caltrain_schedules";
+	
+	//
+	// caltrain_schedules columns
+	//
+	private static final String CALTRAIN_SCHEDULE_ROUTE_NUMBER			= "route_number";
+	private static final String CALTRAIN_SCHEDULE_ROUTE_DIRECTION		= "route_direction";
+	private static final String CALTRAIN_SCHEDULE_DEPART_STOP_NAME		= "depart_stop_name";
+	private static final String CALTRAIN_SCHEDULE_ARRIVAL_STOP_NAME		= "arrival_stop_name";
+	private static final String CALTRAIN_SCHEDULE_DEPART_TIME			= "depart_time";
+	private static final String CALTRAIN_SCHEDULE_ARRIVAL_TIME			= "arrival_time";
+	private static final String CALTRAIN_SCHEDULE_ROUTE_TYPE			= "route_type";
+	private static final String CALTRAIN_SCHEDULE_SERVICE_ID			= "service_id";
+	private static final String CALTRAIN_SCHEDULE_START_DATE			= "start_date";
+	private static final String CALTRAIN_SCHEDULE_END_DATE				= "end_date";
+	private static final String CALTRAIN_SCHEDULE_TRANSFER_STOP_NAME	= "transfer_stop_name";
+	private static final String CALTRAIN_SCHEDULE_TRANSFER_ROUTE_NUMBER	= "transfer_route_number";
+	private static final String CALTRAIN_SCHEDULE_TRANSFER_DEPART_TIME	= "transfer_depart_time";
+	private static final String CALTRAIN_SCHEDULE_TRANSFER_ARRIVAL_TIME	= "transfer_arrival_time";
+	
+	//
+	// Following tables are mirrors the data from the gtfs files
+	//
+	
     //
     // All the table names
     //
@@ -200,12 +230,14 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	m_InvalidDatabaseFile = true;
     	
     	// I deploy the database with the program now, so we will not do following tasks anymore
-    	// IMPORTANT: we we get the new gtfs files, then set above flag to false and set this
-    	//            condition to true so the program would parse text file and build new database,
-    	//            that new-built database would then need to copy to assests/database directory
-    	if ( false ) {
+    	// IMPORTANT: we we get the new gtfs files, then set above flag to false so the program 
+    	//			  would parse text file and build new database, that new-built database 
+    	//			  would then need to copy to assests/database directory
+    	if ( !m_InvalidDatabaseFile ) {
+    		
 	    	// Create tables
     		createTables(db);
+    		
     	}
     	
     }
@@ -220,10 +252,10 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	try {
     		
     		// I deploy the database with the program now, so we will not do following tasks anymore
-        	// IMPORTANT: we we get the new gtfs files, then set above flag to false and set this
-        	//            condition to true so the program would parse text file and build new database,
-        	//            that new-built database would then need to copy to assests/database directory
-        	if ( false ) {
+        	// IMPORTANT: we we get the new gtfs files, then set above flags to false so the program 
+    		//			  would parse text file and build new database, that new-built database would 
+    		//			  then need to copy to assests/database directory
+        	if ( !m_InvalidDatabaseFile && !m_IsUpgraded) {
 	    		// Drop older table if existed
         		dropAllTables(db);
         	}
@@ -236,6 +268,222 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
         
     }
  
+    /*
+     * Aggregate individual trip to caltrain_schedules table
+     */
+    private void AggregateCaltrainSchedule(String depart_station, String arrival_station, String direction, ScheduleEnum selectedSchedule) throws Exception {
+    	
+    	String route_number = "", route_name = "";
+    	
+    	// Data is temporarily held here
+		Map<String, RouteDetail> routeTempDetail = new LinkedHashMap<String, RouteDetail>();
+		RouteDetail newRouteDetail;
+    	
+    	String selectQuery = BuildGetCaltrainScheduleQueryStatement(depart_station, arrival_station, direction, selectedSchedule);
+    	
+		try {
+			SQLiteDatabase db = this.getReadableDatabase();
+			Cursor cursor = db.rawQuery(selectQuery, null);
+			
+			if ( cursor.moveToFirst() ) {
+				
+			    do { 
+			    	
+			    	//
+			    	// Marshal the data
+			    	//
+			    	
+			    	if (depart_station.compareTo(cursor.getString(0).trim()) == 0) {
+			    		
+			    		newRouteDetail = new RouteDetail();
+			    		
+			    		//
+			    		// The row data belong to source station, save them into a hashable list
+			    		//
+			    		newRouteDetail.setDepartStationName(cursor.getString(0).trim());
+			    		route_number = cursor.getString(1).trim();
+			    		newRouteDetail.setRouteNumber(route_number);
+			    		newRouteDetail.setRouteDepart(cursor.getString(2).trim());
+			    		newRouteDetail.setRouteName(cursor.getString(3).trim());
+			    		newRouteDetail.setRouteStartDate(cursor.getString(4).trim());
+			    		newRouteDetail.setRouteEndDate(cursor.getString(5).trim());
+			    		newRouteDetail.setRouteServiceId(cursor.getString(6).trim());
+			    		newRouteDetail.setRouteArrive("Transfer(s)");
+			    		newRouteDetail.setDirectRoute(false);
+			    		newRouteDetail.setNeedTransfer(false);
+			    		
+			    		// Save it in a temporary hashtable object
+			    		routeTempDetail.put(route_number, newRouteDetail);
+			    		
+			    	}
+			    	else if (arrival_station.compareTo(cursor.getString(0).trim()) == 0) {
+			    		
+			    		//
+			    		// The row data belongs to destination station, get the existing route detail
+			    		// based on the route number from the hashable list
+			    		//
+			    		route_number = cursor.getString(1).trim();
+			    		route_name = cursor.getString(3).trim();
+			    		newRouteDetail = routeTempDetail.get(route_number);
+			    		
+			    		if ( (newRouteDetail != null) && (route_name.equals(newRouteDetail.getRouteName()))) {
+			    			newRouteDetail.setArrivalStationName(cursor.getString(0).trim());
+			    			newRouteDetail.setRouteArrive(cursor.getString(2).trim());
+			    			newRouteDetail.setDirectRoute(true);
+			    			newRouteDetail.setNeedTransfer(false);
+			    		}
+			    		else {
+			    			if (newRouteDetail == null) {
+			    				
+			    				newRouteDetail = new RouteDetail();
+					    		
+					    		//
+					    		// The row data belong to destination station, save them into a hashable list
+					    		//
+					    		route_number = cursor.getString(1).trim();
+					    		newRouteDetail.setArrivalStationName(cursor.getString(0).trim());
+					    		newRouteDetail.setRouteNumber(route_number);
+					    		newRouteDetail.setRouteArrive(cursor.getString(2).trim());
+					    		newRouteDetail.setRouteName(cursor.getString(3).trim());
+					    		newRouteDetail.setRouteStartDate(cursor.getString(4).trim());
+					    		newRouteDetail.setRouteEndDate(cursor.getString(5).trim());
+					    		newRouteDetail.setRouteServiceId(cursor.getString(6).trim());
+					    		newRouteDetail.setRouteDepart("Transfer(s)");
+					    		newRouteDetail.setDirectRoute(false);
+					    		newRouteDetail.setNeedTransfer(true);
+			    				
+			    				// Save it in a temporary hashtable object
+					    		routeTempDetail.put(route_number, newRouteDetail);
+			    			}
+			    		}
+			    		
+			    	}
+			    	
+			    } while ( cursor.moveToNext() );
+			    
+			    int position = 0;
+			    int least_position = 0;
+			    
+			    // Now add items into the list in order
+			    for (Map.Entry<String, RouteDetail> entry : routeTempDetail.entrySet()) {
+			    	
+			        RouteDetail routeDetail = entry.getValue();
+			        if (routeDetail.getNeedTransfer()) {
+			        	
+			        	List<String> keyList = new ArrayList<String>(routeTempDetail.keySet());
+			        	
+			        	// Determine if it has any transfer routes within 30 minutes,
+			        	// if it does, build the transfer route list and add to detail list,
+			        	// otherwise, just ignore it
+			        	
+			        	RouteDetail test_entry = null;
+			        	for( int i = position; i >= least_position; i--) {
+			        		
+			        		String route_id = keyList.get(i);
+			        	    test_entry = routeTempDetail.get(route_id);
+			        	   
+			        	    if (!test_entry.getNeedTransfer()) {
+			        	    	
+			        	    	TransferDetail transfer = this.getTransferDetail(test_entry.getRouteDepart(), test_entry.getRouteNumber(), routeDetail.getRouteArrive(), routeDetail.getRouteNumber(), direction);
+			        	    	
+			        	    	if ((transfer != null) && (60*1000*30 <= routeDetail.TimeDifference(transfer.getArrivalTime(), transfer.getDepartTime()))) {
+			        	    		break;
+			        	    	}
+			        	    	
+			        	    	// Only do transfer if less than 30 minutes
+			        	    	if (transfer != null) {
+			        	    		
+			        	    		routeDetail.setDepartStationName(test_entry.getDepartStationName());
+			        	    		routeDetail.setRouteNumber(test_entry.getRouteNumber());
+						    		routeDetail.setRouteDepart(test_entry.getRouteDepart());
+						    		
+			        	    		routeDetail.setRouteTransfer(transfer);
+			        	    		
+			        	    		InsertScheduleIntoTable(routeDetail);
+			        	    		
+			        	    		least_position = i;
+			        	    		
+			        	    		break;
+			        	    		
+			        	    	}
+			        	    	
+			        	    }
+			       
+			        	}
+			        }
+			        else {
+			        	if (routeDetail.getDirectRoute()) {
+			        		InsertScheduleIntoTable(routeDetail);
+			        	}
+			        }
+			    
+			        position++;
+			    }
+			}
+			
+		} catch(Exception e) {
+			throw e;
+		}
+    }
+    
+    /*
+     * Aggregate data to Caltrain schedule table 
+     */
+    private void AggregateCaltrainSchedules(ScheduleEnum scheduledDate) {
+    	
+    	String direction = "";
+    	
+    	try {
+			List<String> station_names = getAllStopNames();
+			
+			for (int i = 0; i < station_names.size(); i++) {
+				for (int j = 0; j < station_names.size(); j++) {
+					
+					if (j < i) direction = "SB";
+					else direction = "NB";
+					
+					AggregateCaltrainSchedule(station_names.get(i), station_names.get(j), direction, scheduledDate);
+				
+				}
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	
+    }
+    
+    /*
+     * Build appropriate query statement to get data from database per trip
+     */
+    private String BuildGetCaltrainScheduleQueryStatement(String depart_station, String arrival_station, String direction, ScheduleEnum selectedSchedule) {
+    	
+    	String queryStatement = "", contents = "";
+    	
+    	switch (selectedSchedule) {
+    	case WEEKDAY:
+    		
+    		contents = getFileContents("queries/get_weekday_routes.txt");
+	   		queryStatement = String.format(contents, direction, depart_station, arrival_station);
+    		break;
+    		
+    	case SATURDAY:
+    		
+    		contents = getFileContents("queries/get_saturday_routes.txt");
+	   		queryStatement = String.format(contents, direction, depart_station, arrival_station);
+    		break;
+    		
+    	case SUNDAY:
+    		
+    		contents = getFileContents("queries/get_sunday_routes.txt");
+	   		queryStatement = String.format(contents, direction, depart_station, arrival_station);
+    		break;
+    		
+    	}
+    	
+    	return queryStatement;
+    }
+    
     /*
      * Build appropriate query statement to more detail on the selected stations
      */
@@ -351,6 +599,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
      * Create all tables
      */
     private void createTables(SQLiteDatabase db) {
+    	
     	createAgencyTable(db);
     	createCalendarDatesTable(db);
     	createCalendarTable(db);
@@ -361,23 +610,65 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	createStopsTable(db);
     	createStopTimesTable(db);
     	createTripsTable(db);
+    	createCaltrainSchedulesTable(db);
+    	
     }
+    
+    /*
+     * Create caltrain_schedules table
+     */
+    private void createCaltrainSchedulesTable(SQLiteDatabase db) {
+    	  
+    	if ( !isTableExists(TABLE_CALTRAIN_SCHEDULES) ) {
+    		
+			// Create table
+			String CREATE_AGENCY_TABLE = "CREATE TABLE " + TABLE_CALTRAIN_SCHEDULES + "("
+	                + CALTRAIN_SCHEDULE_ROUTE_NUMBER + " VARCHAR(32) NOT NULL," 
+	                + CALTRAIN_SCHEDULE_ROUTE_DIRECTION + " VARCHAR(32) NOT NULL," 
+	        		+ CALTRAIN_SCHEDULE_DEPART_STOP_NAME + " VARCHAR(255) NOT NULL,"
+	        		+ CALTRAIN_SCHEDULE_ARRIVAL_STOP_NAME + " VARCHAR(255) NOT NULL,"
+	        		+ CALTRAIN_SCHEDULE_DEPART_TIME + " VARCHAR(32) NOT NULL,"
+	                + CALTRAIN_SCHEDULE_ARRIVAL_TIME + " VARCHAR(32) NOT NULL,"
+	        		+ CALTRAIN_SCHEDULE_ROUTE_TYPE + " VARCHAR(32) NOT NULL,"
+	        		+ CALTRAIN_SCHEDULE_SERVICE_ID + " VARCHAR(255) NOT NULL,"
+	        		+ CALTRAIN_SCHEDULE_START_DATE + " VARCHAR(32) NOT NULL,"
+	                + CALTRAIN_SCHEDULE_END_DATE + " VARCHAR(32) NOT NULL,"
+	                + CALTRAIN_SCHEDULE_TRANSFER_STOP_NAME + " VARCHAR(255) NULL,"
+	        		+ CALTRAIN_SCHEDULE_TRANSFER_ROUTE_NUMBER + " VARCHAR(32) NULL,"
+	        		+ CALTRAIN_SCHEDULE_TRANSFER_DEPART_TIME + " VARCHAR(32) NULL,"
+	                + CALTRAIN_SCHEDULE_TRANSFER_ARRIVAL_TIME + " VARCHAR(32) NULL,"
+	        		+ ");"
+	        		+ "CREATE INDEX idx_depart_stop_name ON " + TABLE_CALTRAIN_SCHEDULES + "(" + CALTRAIN_SCHEDULE_DEPART_STOP_NAME + ");"
+	        		+ "CREATE INDEX idx_arrival_stop_name ON " + TABLE_CALTRAIN_SCHEDULES + "(" + CALTRAIN_SCHEDULE_ARRIVAL_STOP_NAME + ");"
+					+ "CREATE INDEX idx_start_date ON " + TABLE_CALTRAIN_SCHEDULES + "(" + CALTRAIN_SCHEDULE_START_DATE + ");"
+					+ "CREATE INDEX idx_end_date ON " + TABLE_CALTRAIN_SCHEDULES + "(" + CALTRAIN_SCHEDULE_END_DATE + ");";
+			db.execSQL(CREATE_AGENCY_TABLE);	
+			
+    	}
+    	
+    }
+    
     /*
      * Create agency table
      */
     private void createAgencyTable(SQLiteDatabase db) {
     	  
-		// Create table
-		String CREATE_AGENCY_TABLE = "CREATE TABLE " + TABLE_AGENCY + "("
-                + AGENCY_NAME + " VARCHAR(255) NOT NULL," 
-        		+ AGENCY_URL + " VARCHAR(255),"
-                + AGENCY_TIMEZONE + " VARCHAR(10),"
-                + AGENCY_LANGUAGE + " VARCHAR(32),"
-                + AGENCY_PHONE + " VARCHAR(64),"
-                + AGENCY_ID + " VARCHAR(32)"
-        		+ ");";
-				
-		db.execSQL(CREATE_AGENCY_TABLE);	
+    	if ( !isTableExists(TABLE_AGENCY) ) {
+    		
+			// Create table
+			String CREATE_AGENCY_TABLE = "CREATE TABLE " + TABLE_AGENCY + "("
+	                + AGENCY_NAME + " VARCHAR(255) NOT NULL," 
+	        		+ AGENCY_URL + " VARCHAR(255),"
+	                + AGENCY_TIMEZONE + " VARCHAR(10),"
+	                + AGENCY_LANGUAGE + " VARCHAR(32),"
+	                + AGENCY_PHONE + " VARCHAR(64),"
+	                + AGENCY_ID + " VARCHAR(32)"
+	        		+ ");";
+					
+			db.execSQL(CREATE_AGENCY_TABLE);	
+			
+    	}
+    	
     }
     
     /*
@@ -385,16 +676,20 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
      */
     private void createCalendarDatesTable(SQLiteDatabase db) {
     	
-		// Create table
-		String CREATE_CALENDAR_DATES_TABLE = "CREATE TABLE " + TABLE_CALENDAR_DATES + "("
-                + CALENDAR_DATES_SERVICE_ID + " VARCHAR(255) NOT NULL," 
-        		+ CALENDAR_DATES_DATE + " TEXT,"
-                + CALENDAR_DATES_EXCEPTION_TYPE + " VARCHAR(10)"
-        		+ ");"
-				+ "CREATE INDEX service_id_idx ON " + TABLE_CALENDAR_DATES + "(" + CALENDAR_DATES_SERVICE_ID + ");"
-				+ "CREATE INDEX exception_type_idx ON " + TABLE_CALENDAR_DATES + "(" + CALENDAR_DATES_EXCEPTION_TYPE + ");";
-		
-		db.execSQL(CREATE_CALENDAR_DATES_TABLE);	
+    	if ( !isTableExists(this.TABLE_CALENDAR_DATES) ) {
+    		
+			// Create table
+			String CREATE_CALENDAR_DATES_TABLE = "CREATE TABLE " + TABLE_CALENDAR_DATES + "("
+	                + CALENDAR_DATES_SERVICE_ID + " VARCHAR(255) NOT NULL," 
+	        		+ CALENDAR_DATES_DATE + " TEXT,"
+	                + CALENDAR_DATES_EXCEPTION_TYPE + " VARCHAR(10)"
+	        		+ ");"
+					+ "CREATE INDEX service_id_idx ON " + TABLE_CALENDAR_DATES + "(" + CALENDAR_DATES_SERVICE_ID + ");"
+					+ "CREATE INDEX exception_type_idx ON " + TABLE_CALENDAR_DATES + "(" + CALENDAR_DATES_EXCEPTION_TYPE + ");";
+			
+			db.execSQL(CREATE_CALENDAR_DATES_TABLE);	
+			
+    	}
     	
     }
     
@@ -403,21 +698,26 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
      */
     private void createCalendarTable(SQLiteDatabase db) {
         
-		// Create table
-		String CREATE_CALENDAR_TABLE = "CREATE TABLE " + TABLE_CALENDAR + "("
-                + CALENDAR_SERVICE_ID + " VARCHAR(255) NOT NULL PRIMARY KEY," 
-        		+ CALENDAR_MONDAY + " TINYINT,"
-                + CALENDAR_TUESDAY + " TINYINT,"
-                + CALENDAR_WEDNESDAY + " TINYINT,"
-                + CALENDAR_THURSDAY + " TINYINT,"
-                + CALENDAR_FRIDAY + " TINYINT,"
-                + CALENDAR_SATURDAY + " TINYINT,"
-                + CALENDAR_SUNDAY + " TINYINT,"
-                + CALENDAR_START_DATE + " TEXT,"
-                + CALENDAR_END_DATE + " TEXT"
-        		+ ")";
-        
-		db.execSQL(CREATE_CALENDAR_TABLE);
+    	if ( !isTableExists(this.TABLE_CALENDAR) ) {	
+    	
+			// Create table
+			String CREATE_CALENDAR_TABLE = "CREATE TABLE " + TABLE_CALENDAR + "("
+	                + CALENDAR_SERVICE_ID + " VARCHAR(255) NOT NULL PRIMARY KEY," 
+	        		+ CALENDAR_MONDAY + " TINYINT,"
+	                + CALENDAR_TUESDAY + " TINYINT,"
+	                + CALENDAR_WEDNESDAY + " TINYINT,"
+	                + CALENDAR_THURSDAY + " TINYINT,"
+	                + CALENDAR_FRIDAY + " TINYINT,"
+	                + CALENDAR_SATURDAY + " TINYINT,"
+	                + CALENDAR_SUNDAY + " TINYINT,"
+	                + CALENDAR_START_DATE + " TEXT,"
+	                + CALENDAR_END_DATE + " TEXT"
+	        		+ ")";
+	        
+			db.execSQL(CREATE_CALENDAR_TABLE);
+			
+    	}
+    	
     
     }
     
@@ -426,17 +726,21 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
      */
     private void createFareAttributesTable(SQLiteDatabase db) {
 	
-		// Create table
-		String CREATE_FARE_ATTRIBUTES_TABLE = "CREATE TABLE " + TABLE_FARE_ATTRIBUTES + "("
-                + FARE_ATTRIBUTES_FARE_ID + " VARCHAR(255) NOT NULL," 
-        		+ FARE_ATTRIBUTES_PRICE + " VARCHAR(32),"
-                + FARE_ATTRIBUTES_CURRENCY_TYPE + " VARCHAR(10),"
-                + FARE_ATTRIBUTES_PAYMENT_METHOD + " TINYINT,"
-                + FARE_ATTRIBUTES_TRANSFERS + " TINYINT,"
-                + FARE_ATTRIBUTES_TRANSFER_DURATION + " INT NULL"
-        		+ ")";
-        
-		db.execSQL(CREATE_FARE_ATTRIBUTES_TABLE);
+    	if ( !isTableExists(this.TABLE_FARE_ATTRIBUTES) ) {
+    		
+			// Create table
+			String CREATE_FARE_ATTRIBUTES_TABLE = "CREATE TABLE " + TABLE_FARE_ATTRIBUTES + "("
+	                + FARE_ATTRIBUTES_FARE_ID + " VARCHAR(255) NOT NULL," 
+	        		+ FARE_ATTRIBUTES_PRICE + " VARCHAR(32),"
+	                + FARE_ATTRIBUTES_CURRENCY_TYPE + " VARCHAR(10),"
+	                + FARE_ATTRIBUTES_PAYMENT_METHOD + " TINYINT,"
+	                + FARE_ATTRIBUTES_TRANSFERS + " TINYINT,"
+	                + FARE_ATTRIBUTES_TRANSFER_DURATION + " INT NULL"
+	        		+ ")";
+	        
+			db.execSQL(CREATE_FARE_ATTRIBUTES_TABLE);
+			
+    	}
     	
     }
     
@@ -445,15 +749,19 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
      */
     private void createFareRulesTable(SQLiteDatabase db) {
     		
-		// Create table
-		String CREATE_FARE_RULES_TABLE = "CREATE TABLE " + TABLE_FARE_RULES + "("
-                + FARE_RULES_FARE_ID + " VARCHAR(32) NOT NULL," 
-        		+ FARE_RULES_ROUTE_ID + " VARCHAR(10),"
-                + FARE_RULES_ORIGIN_ID + " VARCHAR(10),"
-                + FARE_RULES_DESTINATION_ID + " VARCHAR(10)"
-        		+ ")";
-        
-		db.execSQL(CREATE_FARE_RULES_TABLE);
+    	if ( !isTableExists(this.TABLE_FARE_RULES) ) {
+    		
+			// Create table
+			String CREATE_FARE_RULES_TABLE = "CREATE TABLE " + TABLE_FARE_RULES + "("
+	                + FARE_RULES_FARE_ID + " VARCHAR(32) NOT NULL," 
+	        		+ FARE_RULES_ROUTE_ID + " VARCHAR(10),"
+	                + FARE_RULES_ORIGIN_ID + " VARCHAR(10),"
+	                + FARE_RULES_DESTINATION_ID + " VARCHAR(10)"
+	        		+ ")";
+	        
+			db.execSQL(CREATE_FARE_RULES_TABLE);
+    	}
+    	
     		
     }
     
@@ -461,17 +769,20 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
      * Create shapes table
      */
     private void createShapesTable(SQLiteDatabase db) {
-        	
-		// Create table
-		String CREATE_SHAPES_TABLE = "CREATE TABLE " + TABLE_SHAPES + "("
-                + SHAPES_ID + " VARCHAR(255) NOT NULL," 
-        		+ SHAPES_PT_LAT + " NUMERIC,"
-                + SHAPES_PT_LON + " NUMERIC,"
-                + SHAPES_PT_SEQUENCE + " INT,"
-                + SHAPES_DIST_TRAVELED + " NUMERIC NULL"
-        		+ ")";
-        
-		db.execSQL(CREATE_SHAPES_TABLE);
+    	
+    	if ( !isTableExists(this.TABLE_SHAPES) ) {
+    		
+			// Create table
+			String CREATE_SHAPES_TABLE = "CREATE TABLE " + TABLE_SHAPES + "("
+	                + SHAPES_ID + " VARCHAR(255) NOT NULL," 
+	        		+ SHAPES_PT_LAT + " NUMERIC,"
+	                + SHAPES_PT_LON + " NUMERIC,"
+	                + SHAPES_PT_SEQUENCE + " INT,"
+	                + SHAPES_DIST_TRAVELED + " NUMERIC NULL"
+	        		+ ")";
+	        
+			db.execSQL(CREATE_SHAPES_TABLE);
+    	}
     	
     }
     
@@ -480,18 +791,21 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
      */
     private void createRoutesTable(SQLiteDatabase db) {
     
-		// Create table
-		String CREATE_ROUTES_TABLE = "CREATE TABLE " + TABLE_ROUTES + "("
-                + ROUTES_ID + " VARCHAR(255) NOT NULL PRIMARY KEY," 
-        		+ ROUTES_SHORT_NAME + " VARCHAR(255),"
-                + ROUTES_LONG_NAME + " VARCHAR(255),"
-                + ROUTES_DESC + " VARCHAR(255),"
-                + ROUTES_TYPE + " smallint,"
-                + ROUTES_URL + " VARCHAR(255) NULL,"
-                + ROUTES_COLOR + " VARCHAR(255) NULL"
-        		+ ")";
-        
-		db.execSQL(CREATE_ROUTES_TABLE);
+    	if ( !isTableExists(TABLE_ROUTES) ) {
+    		
+			// Create table
+			String CREATE_ROUTES_TABLE = "CREATE TABLE " + TABLE_ROUTES + "("
+	                + ROUTES_ID + " VARCHAR(255) NOT NULL PRIMARY KEY," 
+	        		+ ROUTES_SHORT_NAME + " VARCHAR(255),"
+	                + ROUTES_LONG_NAME + " VARCHAR(255),"
+	                + ROUTES_DESC + " VARCHAR(255),"
+	                + ROUTES_TYPE + " smallint,"
+	                + ROUTES_URL + " VARCHAR(255) NULL,"
+	                + ROUTES_COLOR + " VARCHAR(255) NULL"
+	        		+ ")";
+	        
+			db.execSQL(CREATE_ROUTES_TABLE);
+    	}
     	
     }
     
@@ -500,22 +814,26 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
      */
     private void createStopTimesTable(SQLiteDatabase db) {
     
-		// Create table
-		String CREATE_STOP_TIME_TABLE = "CREATE TABLE " + TABLE_STOP_TIMES + "("
-                + STOP_TIMES_TRIP_ID + " VARCHAR(255) NOT NULL," 
-        		+ STOP_TIMES_ARRIVAL_TIME + " TEXT,"
-                + STOP_TIMES_DEPARTURE_TIME + " TEXT,"
-                + STOP_TIMES_STOP_ID + " VARCHAR(255) NOT NULL,"
-                + STOP_TIMES_STOP_SEQUENCE + " SMALLINT NOT NULL,"
-                + STOP_TIMES_PICKUP_TYPE + " SMALLINT,"
-                + STOP_TIMES_DROPOFF_TYPE + " SMALLINT"
-        		+ ");"
-        		+ "CREATE INDEX trip_id_idx ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_TRIP_ID + ");"
-				+ "CREATE INDEX stop_id_idx ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_STOP_ID + ");"
-				+ "CREATE INDEX pickup_type ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_PICKUP_TYPE + ");"
-				+ "CREATE INDEX dropoff_type_idx ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_DROPOFF_TYPE + ")";
-        
-		db.execSQL(CREATE_STOP_TIME_TABLE);
+    	if ( !isTableExists(this.TABLE_STOP_TIMES) ) {
+    		
+			// Create table
+			String CREATE_STOP_TIME_TABLE = "CREATE TABLE " + TABLE_STOP_TIMES + "("
+	                + STOP_TIMES_TRIP_ID + " VARCHAR(255) NOT NULL," 
+	        		+ STOP_TIMES_ARRIVAL_TIME + " TEXT,"
+	                + STOP_TIMES_DEPARTURE_TIME + " TEXT,"
+	                + STOP_TIMES_STOP_ID + " VARCHAR(255) NOT NULL,"
+	                + STOP_TIMES_STOP_SEQUENCE + " SMALLINT NOT NULL,"
+	                + STOP_TIMES_PICKUP_TYPE + " SMALLINT,"
+	                + STOP_TIMES_DROPOFF_TYPE + " SMALLINT"
+	        		+ ");"
+	        		+ "CREATE INDEX trip_id_idx ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_TRIP_ID + ");"
+					+ "CREATE INDEX stop_id_idx ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_STOP_ID + ");"
+					+ "CREATE INDEX pickup_type ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_PICKUP_TYPE + ");"
+					+ "CREATE INDEX dropoff_type_idx ON " + TABLE_STOP_TIMES + "(" + STOP_TIMES_DROPOFF_TYPE + ")";
+	        
+			db.execSQL(CREATE_STOP_TIME_TABLE);
+			
+    	}
     	
     }
     
@@ -524,25 +842,29 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
      */
     private void createStopsTable(SQLiteDatabase db) {
     
-		// Create stops table
-		String CREATE_STOPS_TABLE = "CREATE TABLE " + TABLE_STOPS + "("
-                + STOPS_ID + " VARCHAR(255) NOT NULL PRIMARY KEY," 
-        		+ STOPS_CODE + " VARCHAR(255),"
-                + STOPS_NAME + " VARCHAR(255) NOT NULL,"
-                + STOPS_DESC + " VARCHAR(255),"
-                + STOPS_LAT + " NUMERIC NOT NULL,"
-                + STOPS_LON + " NUMERIC NOT NULL,"
-                + STOPS_ZONE_ID + " VARCHAR(255),"
-                + STOPS_URL + " VARCHAR(255),"
-                + STOPS_LOC_TYPE + " INT,"
-                + STOPS_PARENT_STATION + " VARCHAR(255),"
-                + STOPS_PLATFORM_CODE + " VARCHAR(255)"
-        		+ ");"
-				+ "CREATE INDEX zone_id_idx ON " + TABLE_STOPS + "(" + STOPS_ZONE_ID + ");"
-				+ "CREATE INDEX lat_idx ON " + TABLE_STOPS + "(" + STOPS_LAT + ");"
-				+ "CREATE INDEX lon_idx ON " + TABLE_STOPS + "(" + STOPS_LON + ")";
+    	if ( !isTableExists(this.TABLE_STOPS) ) {
+    		
+			// Create stops table
+			String CREATE_STOPS_TABLE = "CREATE TABLE " + TABLE_STOPS + "("
+	                + STOPS_ID + " VARCHAR(255) NOT NULL PRIMARY KEY," 
+	        		+ STOPS_CODE + " VARCHAR(255),"
+	                + STOPS_NAME + " VARCHAR(255) NOT NULL,"
+	                + STOPS_DESC + " VARCHAR(255),"
+	                + STOPS_LAT + " NUMERIC NOT NULL,"
+	                + STOPS_LON + " NUMERIC NOT NULL,"
+	                + STOPS_ZONE_ID + " VARCHAR(255),"
+	                + STOPS_URL + " VARCHAR(255),"
+	                + STOPS_LOC_TYPE + " INT,"
+	                + STOPS_PARENT_STATION + " VARCHAR(255),"
+	                + STOPS_PLATFORM_CODE + " VARCHAR(255)"
+	        		+ ");"
+					+ "CREATE INDEX zone_id_idx ON " + TABLE_STOPS + "(" + STOPS_ZONE_ID + ");"
+					+ "CREATE INDEX lat_idx ON " + TABLE_STOPS + "(" + STOPS_LAT + ");"
+					+ "CREATE INDEX lon_idx ON " + TABLE_STOPS + "(" + STOPS_LON + ")";
+				
+			db.execSQL(CREATE_STOPS_TABLE);
 			
-		db.execSQL(CREATE_STOPS_TABLE);
+    	}
     	
     }
     
@@ -551,23 +873,27 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
      */
     private void createTripsTable(SQLiteDatabase db) {
          
-		// Create table
-		String CREATE_STRIPS_TABLE = "CREATE TABLE " + TABLE_TRIPS + "("
-                + TRIPS_ROUTE_ID + " VARCHAR(255) NOT NULL," 
-        		+ TRIPS_SERVICE_ID + " VARCHAR(255) NOT NULL,"
-                + TRIPS_TRIP_ID + " VARCHAR(255) NOT NULL PRIMARY KEY,"
-                + TRIPS_HEAD_SIGN + " VARCHAR(255),"
-                + TRIPS_SHORT_NAME + " VARCHAR(255),"
-                + TRIPS_DIRECTION_ID + " TINYINT,"
-                + TRIPS_BLOCK_ID + " VARCHAR(255),"
-                + TRIPS_SHAPE_ID + " VARCHAR(255)"
-        		+ ");"
-        		+ "CREATE INDEX route_id_idx ON " + TABLE_TRIPS + "(" + TRIPS_ROUTE_ID + ");"
-				+ "CREATE INDEX service_id_idx ON " + TABLE_TRIPS + "(" + TRIPS_SERVICE_ID + ");"
-				+ "CREATE INDEX direction_id_idx ON " + TABLE_TRIPS + "(" + TRIPS_DIRECTION_ID + ");"
-				+ "CREATE INDEX shape_idx ON " + TABLE_TRIPS + "(" + TRIPS_SHAPE_ID + ")";
-        
-		db.execSQL(CREATE_STRIPS_TABLE);
+    	if ( !isTableExists(TABLE_TRIPS) ) {
+    		
+			// Create table
+			String CREATE_STRIPS_TABLE = "CREATE TABLE " + TABLE_TRIPS + "("
+	                + TRIPS_ROUTE_ID + " VARCHAR(255) NOT NULL," 
+	        		+ TRIPS_SERVICE_ID + " VARCHAR(255) NOT NULL,"
+	                + TRIPS_TRIP_ID + " VARCHAR(255) NOT NULL PRIMARY KEY,"
+	                + TRIPS_HEAD_SIGN + " VARCHAR(255),"
+	                + TRIPS_SHORT_NAME + " VARCHAR(255),"
+	                + TRIPS_DIRECTION_ID + " TINYINT,"
+	                + TRIPS_BLOCK_ID + " VARCHAR(255),"
+	                + TRIPS_SHAPE_ID + " VARCHAR(255)"
+	        		+ ");"
+	        		+ "CREATE INDEX route_id_idx ON " + TABLE_TRIPS + "(" + TRIPS_ROUTE_ID + ");"
+					+ "CREATE INDEX service_id_idx ON " + TABLE_TRIPS + "(" + TRIPS_SERVICE_ID + ");"
+					+ "CREATE INDEX direction_id_idx ON " + TABLE_TRIPS + "(" + TRIPS_DIRECTION_ID + ");"
+					+ "CREATE INDEX shape_idx ON " + TABLE_TRIPS + "(" + TRIPS_SHAPE_ID + ")";
+	        
+			db.execSQL(CREATE_STRIPS_TABLE);
+			
+    	}
    
     }
     
@@ -582,6 +908,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 	 * Drop all tables
 	 */
 	private void dropAllTables(SQLiteDatabase db) {
+		
 		db.execSQL("DROP TABLE IF EXISTS " + TABLE_AGENCY);
 		db.execSQL("DROP TABLE IF EXISTS " + TABLE_CALENDAR_DATES);
 		db.execSQL("DROP TABLE IF EXISTS " + TABLE_CALENDAR);
@@ -592,9 +919,12 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 		db.execSQL("DROP TABLE IF EXISTS " + TABLE_STOP_TIMES);
 		db.execSQL("DROP TABLE IF EXISTS " + TABLE_ROUTES);
 		db.execSQL("DROP TABLE IF EXISTS " + TABLE_TRIPS);
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_CALTRAIN_SCHEDULES);
+		
 	}
 	
 	private void setDatabaseVersion() {
+		
 		SQLiteDatabase db = null;
 		try {
 			db = SQLiteDatabase.openDatabase(DATABASE_FILE.getAbsolutePath(), null,
@@ -606,6 +936,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 		  		db.close();
 			}
 		}
+		
 	}
 	
     /*
@@ -1092,6 +1423,44 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     }
     
     /*
+     * Insert route detail into caltrain schedule table
+     */
+    private void InsertScheduleIntoTable(RouteDetail routeDetail) throws Exception {
+
+    	if ( !isTableExists(TABLE_CALTRAIN_SCHEDULES)) throw new Exception("Caltrain schedule table does not exist");
+        
+    	String line = "";
+    	
+    	try {
+    		
+		    ContentValues values = new ContentValues();  
+			
+		    values.put(CALTRAIN_SCHEDULE_ROUTE_NUMBER, routeDetail.getRouteNumber());  
+		    values.put(CALTRAIN_SCHEDULE_ROUTE_DIRECTION, routeDetail.getRouteDirection());  
+		    values.put(CALTRAIN_SCHEDULE_DEPART_STOP_NAME, routeDetail.getDepartStationName());  
+		    values.put(CALTRAIN_SCHEDULE_ARRIVAL_STOP_NAME, routeDetail.getArrivalStationName());  
+		    values.put(CALTRAIN_SCHEDULE_DEPART_TIME, routeDetail.getRouteDepart());  
+		    values.put(CALTRAIN_SCHEDULE_ARRIVAL_TIME, routeDetail.getRouteArrive());  
+		    values.put(CALTRAIN_SCHEDULE_ROUTE_TYPE, routeDetail.getRouteName());  
+		    values.put(CALTRAIN_SCHEDULE_SERVICE_ID, routeDetail.getRouteServiceId());  
+		    values.put(CALTRAIN_SCHEDULE_START_DATE, routeDetail.getRouteStartDate());  
+		    values.put(CALTRAIN_SCHEDULE_END_DATE, routeDetail.getRouteEndDate());  
+		    
+		    if (routeDetail.getRouteTransfer() != null) {
+		    	values.put(CALTRAIN_SCHEDULE_TRANSFER_STOP_NAME, routeDetail.getRouteTransfer().getStopName());  
+			    values.put(CALTRAIN_SCHEDULE_TRANSFER_ROUTE_NUMBER, routeDetail.getRouteTransfer().getArrivalRouteNumber());  
+			    values.put(CALTRAIN_SCHEDULE_TRANSFER_DEPART_TIME, routeDetail.getRouteTransfer().getDepartTime());  
+			    values.put(CALTRAIN_SCHEDULE_TRANSFER_ARRIVAL_TIME, routeDetail.getRouteTransfer().getArrivalTime());  
+		    }
+		    
+		    this.getWritableDatabase().insert(TABLE_CALTRAIN_SCHEDULES, null, values); 
+			
+    	} catch	(Exception e) {
+			throw e;
+		}		
+    }
+    
+    /*
      * Check if table exists
      */
     private boolean isTableExists(String tableName) {
@@ -1115,10 +1484,43 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     }
     
     /*
+     * Aggregate data to build static routes to speed up sql query
+     */
+    private void populateDataToCaltrainSchedulesTables() throws Exception {
+    	
+    	if ( 0 < getTableCount(TABLE_CALTRAIN_SCHEDULES) ) return;
+    	
+    	//
+    	// Aggregate data for all routes
+    	//
+    	AggregateCaltrainSchedules(ScheduleEnum.WEEKDAY);
+    	AggregateCaltrainSchedules(ScheduleEnum.SATURDAY);
+    	AggregateCaltrainSchedules(ScheduleEnum.SUNDAY);
+    }
+    
+    /*
      * Parse and insert data to all tables
      */
-    private void populateAllDataToTables() {
-    	
+    private void populateAllDataToTables() throws Exception {
+    	try {
+			this.populateDataToAgencyTable();
+	    	this.populateDataToCalendarDatesTable();
+	    	this.populateDataToCalendarTable();
+	    	this.populateDataToFareAttributesTable();
+	    	this.populateDataToFareRulesTable();
+	    	this.populateDataToRoutesTable();
+	    	this.populateDataToShapesTable();
+	    	this.populateDataToStopsTable();
+	    	this.populateDataToStopTimesTable();
+	    	this.populateDataToTripsTable();
+	    	
+	    	// Need to be done last
+	    	this.populateDataToCaltrainSchedulesTables();
+    	} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw e;
+		}
     }
     
     /*
@@ -1530,6 +1932,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
      * Check if we need to populate data to tables on first run or on database upgrade
      */
     public void SetupDatabaseTables() {
+    	
     	try
     	{
 	    	if ((getTableCount(TABLE_TRIPS)) <= 0 
@@ -1541,6 +1944,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
 	    			|| (getTableCount(TABLE_FARE_ATTRIBUTES) <= 0)
 	    			|| (getTableCount(TABLE_CALENDAR_DATES) <= 0)
 	    			|| (getTableCount(TABLE_CALENDAR) <= 0)
+	    			|| (getTableCount(TABLE_CALTRAIN_SCHEDULES) <= 0)
 	    			) {
 	    		
 	    		// Configure data for the first time 
@@ -1549,6 +1953,7 @@ public class CalTrainDatabaseHelper extends SQLiteOpenHelper {
     	} catch (Exception e) {
     		e.printStackTrace();
     	}
+    	
     }
     
     // 

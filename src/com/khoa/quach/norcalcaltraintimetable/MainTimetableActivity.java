@@ -728,7 +728,10 @@ public class MainTimetableActivity extends Activity implements OnFinishedGetDeta
         	}
         	else {
         		
-        		m_routes.add(new RouteDetail("", "No routes", "available", "", ""));
+        		RouteDetail noRoutes = new RouteDetail();
+        		noRoutes.setRouteDepart("No routes");
+        		noRoutes.setRouteArrive("available");
+        		m_routes.add(noRoutes);
         		
         		// Bind data to the interface
             	RouteDetailInfoAdapter arrayAdapter = new RouteDetailInfoAdapter(this, R.layout.route_info, m_routes);
